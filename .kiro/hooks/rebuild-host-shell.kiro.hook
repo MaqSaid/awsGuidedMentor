@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Rebuild Host Shell",
+  "description": "Rebuilds host-shell when a new page is created",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": ["frontend/host-shell/src/pages/*.tsx"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd frontend && npm run build -w host-shell"
+  }
+}

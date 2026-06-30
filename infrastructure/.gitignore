@@ -1,0 +1,18 @@
+# Terraform local state and plugins
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files (local developer customization)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sensitive variable definitions
+*.auto.tfvars

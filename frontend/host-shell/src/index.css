@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@theme {
+  --color-bg-primary: #0a0a1a;
+  --color-bg-secondary: #0f0f2a;
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-violet: #7c3aed;
+  --color-violet-light: #a78bfa;
+  --color-mint: #10b981;
+  --color-mint-light: #34d399;
+  --color-amber: #f59e0b;
+  --color-rose: #f43f5e;
+  --color-blue: #3b82f6;
+  --color-text-primary: #f1f0ff;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-violet {
+  box-shadow: 0 0 60px rgba(124, 58, 237, 0.3);
+}
+
+.glow-mint {
+  box-shadow: 0 0 60px rgba(16, 185, 129, 0.3);
+}
+
+.btn-violet {
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-violet:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+}
+
+.btn-mint {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: #0a0a1a;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f1f0ff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-ghost:hover {
+  border-color: #7c3aed;
+  color: #a78bfa;
+}
+
+
+/* View Transitions API — smooth route changes */
+::view-transition-old(root) {
+  animation: fade-out 200ms ease-out;
+}
+
+::view-transition-new(root) {
+  animation: fade-in 200ms ease-in;
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GuidedMentor.ArchitectureTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.9.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="NetArchTest.Rules" Version="1.*" />
+    <PackageReference Include="FluentAssertions" Version="8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Identity\GuidedMentor.Identity.Domain\GuidedMentor.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Identity\GuidedMentor.Identity.Application\GuidedMentor.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\src\Identity\GuidedMentor.Identity.Infrastructure\GuidedMentor.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Identity\GuidedMentor.Identity.Api\GuidedMentor.Identity.Api.csproj" />
+    <ProjectReference Include="..\..\src\Mentoring\GuidedMentor.Mentoring.Domain\GuidedMentor.Mentoring.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Mentoring\GuidedMentor.Mentoring.Application\GuidedMentor.Mentoring.Application.csproj" />
+    <ProjectReference Include="..\..\src\Mentoring\GuidedMentor.Mentoring.Infrastructure\GuidedMentor.Mentoring.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Mentoring\GuidedMentor.Mentoring.Api\GuidedMentor.Mentoring.Api.csproj" />
+    <ProjectReference Include="..\..\src\Content\GuidedMentor.Content.Domain\GuidedMentor.Content.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Content\GuidedMentor.Content.Application\GuidedMentor.Content.Application.csproj" />
+    <ProjectReference Include="..\..\src\Content\GuidedMentor.Content.Infrastructure\GuidedMentor.Content.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Content\GuidedMentor.Content.Api\GuidedMentor.Content.Api.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Domain\GuidedMentor.Engagement.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Application\GuidedMentor.Engagement.Application.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Infrastructure\GuidedMentor.Engagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Api\GuidedMentor.Engagement.Api.csproj" />
+  </ItemGroup>
+
+</Project>

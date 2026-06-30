@@ -1,0 +1,220 @@
+name: Deploy - Frontend (S3 + CloudFront)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '22'
+  AWS_REGION: ap-southeast-2
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: Build frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all workspaces (Vite)
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
+          VITE_APPSYNC_URL: ${{ vars.APPSYNC_URL }}
+          VITE_ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: |
+            frontend/host-shell/dist/
+            frontend/remotes/identity/dist/
+            frontend/remotes/mentoring/dist/
+            frontend/remotes/content/dist/
+            frontend/remotes/engagement/dist/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload host-shell to S3
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          BUCKET="${{ vars.S3_BUCKET_NAME }}"
+          
+          echo "Deploying host-shell to s3://${BUCKET}/"
+          aws s3 sync dist/frontend/host-shell/dist/ "s3://${BUCKET}/" \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.json"
+          
+          # Upload HTML and JSON with no-cache
+          aws s3 sync dist/frontend/host-shell/dist/ "s3://${BUCKET}/" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --include "index.html" \
+            --include "*.json" \
+            --exclude "*" \
+            --content-type "text/html"
+
+      - name: Upload remotes to S3
+        run: |
+          BUCKET="${{ vars.S3_BUCKET_NAME }}"
+          
+          for remote in identity mentoring content engagement; do
+            if [ -d "dist/frontend/remotes/${remote}/dist" ]; then
+              echo "Deploying ${remote} remote to s3://${BUCKET}/remotes/${remote}/"
+              aws s3 sync "dist/frontend/remotes/${remote}/dist/" "s3://${BUCKET}/remotes/${remote}/" \
+                --delete \
+                --cache-control "public, max-age=31536000, immutable" \
+                --exclude "*.html" \
+                --exclude "*.json"
+              
+              aws s3 sync "dist/frontend/remotes/${remote}/dist/" "s3://${BUCKET}/remotes/${remote}/" \
+                --cache-control "no-cache, no-store, must-revalidate" \
+                --include "*.html" \
+                --include "*.json" \
+                --exclude "*"
+            fi
+          done
+
+      - name: Invalidate CloudFront cache
+        run: |
+          DISTRIBUTION_ID="${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}"
+          
+          echo "Invalidating CloudFront distribution: ${DISTRIBUTION_ID}"
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "${DISTRIBUTION_ID}" \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+          
+          echo "Invalidation created: ${INVALIDATION_ID}"
+          
+          # Wait for invalidation to complete
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${DISTRIBUTION_ID}" \
+            --id "${INVALIDATION_ID}"
+          
+          echo "✓ CloudFront invalidation completed"
+
+  deploy-production:
+    name: Deploy to Production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload to S3 (Production)
+        run: |
+          BUCKET="${{ vars.S3_BUCKET_NAME_PROD }}"
+          
+          # Host shell
+          aws s3 sync dist/frontend/host-shell/dist/ "s3://${BUCKET}/" \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.json"
+          
+          aws s3 sync dist/frontend/host-shell/dist/ "s3://${BUCKET}/" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --include "index.html" \
+            --include "*.json" \
+            --exclude "*" \
+            --content-type "text/html"
+          
+          # Remotes
+          for remote in identity mentoring content engagement; do
+            if [ -d "dist/frontend/remotes/${remote}/dist" ]; then
+              aws s3 sync "dist/frontend/remotes/${remote}/dist/" "s3://${BUCKET}/remotes/${remote}/" \
+                --delete \
+                --cache-control "public, max-age=31536000, immutable" \
+                --exclude "*.html" \
+                --exclude "*.json"
+              
+              aws s3 sync "dist/frontend/remotes/${remote}/dist/" "s3://${BUCKET}/remotes/${remote}/" \
+                --cache-control "no-cache, no-store, must-revalidate" \
+                --include "*.html" \
+                --include "*.json" \
+                --exclude "*"
+            fi
+          done
+
+      - name: Invalidate CloudFront cache (Production)
+        run: |
+          DISTRIBUTION_ID="${{ vars.CLOUDFRONT_DISTRIBUTION_ID_PROD }}"
+          
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "${DISTRIBUTION_ID}" \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+          
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${DISTRIBUTION_ID}" \
+            --id "${INVALIDATION_ID}"
+          
+          echo "✓ Production CloudFront invalidation completed"

@@ -1,0 +1,28 @@
+{
+  "name": "aws-guided-mentor",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "infrastructure",
+    "frontend/host-shell",
+    "frontend/remotes/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "jest --config jest.integration.config.ts",
+    "lint": "eslint . --ext .ts,.tsx",
+    "build": "tsc -b"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.162",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "fast-check": "^3.23.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.11",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
+  }
+}

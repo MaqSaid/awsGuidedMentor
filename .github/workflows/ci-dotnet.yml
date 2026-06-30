@@ -1,0 +1,157 @@
+name: CI - .NET Backend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Directory.Build.props'
+      - 'GuidedMentor.sln'
+      - '.github/workflows/ci-dotnet.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Directory.Build.props'
+      - 'GuidedMentor.sln'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build, Test & Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore GuidedMentor.sln
+
+      - name: Build solution
+        run: dotnet build GuidedMentor.sln --configuration Release --no-restore
+
+      - name: Run xUnit tests
+        run: |
+          dotnet test GuidedMentor.sln \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./test-results \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Run FsCheck property-based tests
+        run: |
+          dotnet test GuidedMentor.sln \
+            --configuration Release \
+            --no-build \
+            --filter "Category=Property" \
+            --logger "trx;LogFileName=pbt-results.trx" \
+            --results-directory ./test-results
+
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Generate coverage report
+        run: |
+          reportgenerator \
+            -reports:"./test-results/**/coverage.opencover.xml" \
+            -targetdir:"./coverage-report" \
+            -reporttypes:"Cobertura;HtmlSummary;TextSummary"
+
+      - name: Check coverage thresholds
+        run: |
+          # Parse coverage summary and enforce thresholds
+          SUMMARY=$(cat ./coverage-report/Summary.txt 2>/dev/null || echo "")
+
+          if [ -z "$SUMMARY" ]; then
+            echo "::warning::No coverage summary found. Skipping threshold check."
+            exit 0
+          fi
+
+          # Extract line coverage percentage
+          LINE_COVERAGE=$(echo "$SUMMARY" | grep -oP 'Line coverage: \K[\d.]+' || echo "0")
+
+          echo "Overall line coverage: ${LINE_COVERAGE}%"
+
+          # Check handler projects coverage (≥80%)
+          echo "Checking handler coverage thresholds..."
+          for project in Identity Mentoring Content Engagement; do
+            HANDLER_COV=$(find ./test-results -path "*${project}.Api*" -name "coverage.opencover.xml" -exec \
+              grep -oP 'sequenceCoverage="\K[\d.]+' {} \; | head -1 || echo "0")
+            
+            if [ -n "$HANDLER_COV" ]; then
+              HANDLER_INT=$(echo "$HANDLER_COV" | cut -d. -f1)
+              if [ "$HANDLER_INT" -lt 80 ]; then
+                echo "::error::${project}.Api handler coverage is ${HANDLER_COV}% (minimum: 80%)"
+                FAILED=true
+              else
+                echo "✓ ${project}.Api handler coverage: ${HANDLER_COV}%"
+              fi
+            fi
+          done
+
+          # Check pure logic projects coverage (≥95%)
+          echo "Checking pure logic coverage thresholds..."
+          for project in Identity Mentoring Content Engagement; do
+            DOMAIN_COV=$(find ./test-results -path "*${project}.Domain*" -name "coverage.opencover.xml" -exec \
+              grep -oP 'sequenceCoverage="\K[\d.]+' {} \; | head -1 || echo "0")
+            
+            if [ -n "$DOMAIN_COV" ]; then
+              DOMAIN_INT=$(echo "$DOMAIN_COV" | cut -d. -f1)
+              if [ "$DOMAIN_INT" -lt 95 ]; then
+                echo "::error::${project}.Domain pure logic coverage is ${DOMAIN_COV}% (minimum: 95%)"
+                FAILED=true
+              else
+                echo "✓ ${project}.Domain pure logic coverage: ${DOMAIN_COV}%"
+              fi
+            fi
+          done
+
+          if [ "$FAILED" = "true" ]; then
+            echo "::error::Coverage thresholds not met. Handlers must be ≥80%, pure logic must be ≥95%."
+            exit 1
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: ./test-results/**/*.trx
+          retention-days: 7
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-coverage-report
+          path: ./coverage-report/
+          retention-days: 7
+
+      - name: NuGet audit
+        run: dotnet list GuidedMentor.sln package --vulnerable --include-transitive 2>&1 | tee nuget-audit.txt
+        continue-on-error: false
+
+      - name: Check NuGet vulnerabilities
+        run: |
+          if grep -q "has the following vulnerable packages" nuget-audit.txt; then
+            echo "::error::Vulnerable NuGet packages detected. Review nuget-audit.txt."
+            exit 1
+          fi
+          echo "✓ No vulnerable NuGet packages found."

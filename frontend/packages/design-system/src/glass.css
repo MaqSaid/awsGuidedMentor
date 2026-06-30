@@ -1,0 +1,103 @@
+/**
+ * GuidedMentor Glassmorphism Utility Classes
+ * Provides glass-card, gradient utilities, and motion-safe defaults.
+ *
+ * Requirements: 18.3, 25.11
+ */
+
+/* ============================================
+ * Glassmorphism Card
+ * ============================================ */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-hover);
+}
+
+/* ============================================
+ * Fallback for browsers without backdrop-filter
+ * ============================================ */
+@supports not (backdrop-filter: blur(12px)) {
+  .glass-card {
+    background: var(--color-surface);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .glass-card:hover {
+    background: var(--color-surface-elevated);
+  }
+}
+
+/* ============================================
+ * Gradient Utilities
+ * ============================================ */
+.gradient-mentor {
+  background: var(--gradient-mentor);
+}
+
+.gradient-mentee {
+  background: var(--gradient-mentee);
+}
+
+.gradient-surface {
+  background: var(--gradient-surface);
+}
+
+/* Gradient border utility using pseudo-element */
+.gradient-border-mentor {
+  position: relative;
+  border-radius: var(--radius-md);
+}
+
+.gradient-border-mentor::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--gradient-mentor);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.gradient-border-mentee {
+  position: relative;
+  border-radius: var(--radius-md);
+}
+
+.gradient-border-mentee::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--gradient-mentee);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ============================================
+ * Reduced Motion — Accessibility (Req 25.11)
+ * Disables all animations/transitions when user
+ * has configured reduced motion in their OS.
+ * ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

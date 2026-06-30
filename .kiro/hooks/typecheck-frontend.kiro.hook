@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "TypeCheck Frontend",
+  "description": "Runs TypeScript type checking when frontend files are saved to catch type errors early",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.tsx",
+      "**/*.ts"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npx tsc --noEmit --project frontend/host-shell/tsconfig.json",
+    "timeout": 20
+  },
+  "workspaceFolderName": "awsGuidedMentor",
+  "shortName": "typecheck-frontend"
+}

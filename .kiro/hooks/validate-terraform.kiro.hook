@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Validate Terraform",
+  "description": "Validates Terraform files with terraform validate when infrastructure files change",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.tf"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "terraform -chdir=infrastructure validate",
+    "timeout": 15
+  },
+  "workspaceFolderName": "awsGuidedMentor",
+  "shortName": "validate-terraform"
+}

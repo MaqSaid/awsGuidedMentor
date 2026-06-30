@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>GuidedMentor.Identity.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GuidedMentor.Identity.Domain\GuidedMentor.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\Shared\GuidedMentor.SharedKernel\GuidedMentor.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

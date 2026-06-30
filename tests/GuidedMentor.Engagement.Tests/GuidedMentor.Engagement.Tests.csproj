@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GuidedMentor.Engagement.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.9.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FsCheck" Version="3.*" />
+    <PackageReference Include="FsCheck.Xunit" Version="3.*" />
+    <PackageReference Include="FluentAssertions" Version="8.*" />
+    <PackageReference Include="Bogus" Version="35.*" />
+    <PackageReference Include="NSubstitute" Version="5.*" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Domain\GuidedMentor.Engagement.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Application\GuidedMentor.Engagement.Application.csproj" />
+    <ProjectReference Include="..\GuidedMentor.SharedTestUtils\GuidedMentor.SharedTestUtils.csproj" />
+  </ItemGroup>
+
+</Project>

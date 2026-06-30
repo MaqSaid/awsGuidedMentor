@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Architecture Review",
+  "description": "Reviews C# code changes for adherence to Clean Architecture rules before writing .cs files",
+  "version": "2",
+  "when": {
+    "type": "preToolUse",
+    "toolTypes": [
+      "write"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "ONLY if the file being written has a .cs extension, verify: 1) Domain layer has zero dependencies on Infrastructure/Application/Api. 2) Application layer only depends on Domain. 3) Commands use Result/Result<T> return types. 4) Classes are sealed unless designed for inheritance. 5) File uses file-scoped namespace. If the file is NOT a .cs file (e.g., .ts, .tsx, .css, .json, .md, .tf, .html, .yml), SKIP all checks and allow the write to proceed without comment."
+  }
+}

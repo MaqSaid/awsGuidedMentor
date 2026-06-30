@@ -1,0 +1,36 @@
+{
+  "name": "guided-mentor-frontend",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "host-shell",
+    "remotes/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n host,identity,mentoring,content,engagement -c blue,green,yellow,magenta,cyan \"npm run dev -w host-shell\" \"npm run dev -w @guided-mentor/identity\" \"npm run dev -w @guided-mentor/mentoring\" \"npm run dev -w @guided-mentor/content\" \"npm run dev -w @guided-mentor/engagement\"",
+    "build": "npm run build -w host-shell && npm run build -w @guided-mentor/identity && npm run build -w @guided-mentor/mentoring && npm run build -w @guided-mentor/content && npm run build -w @guided-mentor/engagement",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "preview": "concurrently -n host,identity,mentoring,content,engagement -c blue,green,yellow,magenta,cyan \"npm run preview -w host-shell\" \"npm run preview -w @guided-mentor/identity\" \"npm run preview -w @guided-mentor/mentoring\" \"npm run preview -w @guided-mentor/content\" \"npm run preview -w @guided-mentor/engagement\""
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^4.5.2",
+    "axe-core": "^4.10.3",
+    "concurrently": "^9.2.3",
+    "jest-axe": "^9.0.0",
+    "jsdom": "^25.0.1",
+    "msw": "^2.14.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.1"
+  },
+  "msw": {
+    "workerDirectory": [
+      "host-shell\\public"
+    ]
+  }
+}

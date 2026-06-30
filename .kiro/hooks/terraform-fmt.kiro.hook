@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Terraform Format Check",
+  "description": "Checks Terraform formatting when .tf files are saved",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["**/*.tf"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "terraform fmt -check -recursive infrastructure/"
+  }
+}

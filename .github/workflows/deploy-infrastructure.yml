@@ -1,0 +1,167 @@
+name: Deploy - Infrastructure (Terraform)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/deploy-infrastructure.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+
+env:
+  TF_VERSION: '1.9'
+  TF_WORKING_DIR: infrastructure
+  AWS_REGION: ap-southeast-2
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend-config="environments/staging/backend.hcl"
+
+      - name: Terraform Workspace
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform workspace select staging || terraform workspace new staging
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        id: plan
+        run: |
+          terraform plan \
+            -var-file="environments/staging/terraform.tfvars" \
+            -out=tfplan \
+            -no-color 2>&1 | tee plan-output.txt
+        continue-on-error: true
+
+      - name: Comment PR with plan
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('${{ env.TF_WORKING_DIR }}/plan-output.txt', 'utf8');
+            const truncated = plan.length > 60000 ? plan.substring(0, 60000) + '\n\n... (truncated)' : plan;
+            
+            const body = `### Terraform Plan 📋
+            
+            \`\`\`
+            ${truncated}
+            \`\`\`
+            
+            *Plan generated for workspace: staging*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail if plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  terraform-apply:
+    name: Terraform Apply (Staging)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend-config="environments/staging/backend.hcl"
+
+      - name: Terraform Workspace
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform workspace select staging || terraform workspace new staging
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform apply \
+            -var-file="environments/staging/terraform.tfvars" \
+            -auto-approve
+
+  terraform-apply-production:
+    name: Terraform Apply (Production)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [terraform-apply]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend-config="environments/production/backend.hcl"
+
+      - name: Terraform Workspace
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform workspace select production || terraform workspace new production
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform apply \
+            -var-file="environments/production/terraform.tfvars" \
+            -auto-approve

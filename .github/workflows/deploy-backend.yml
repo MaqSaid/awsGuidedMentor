@@ -1,0 +1,226 @@
+name: Deploy - Backend (Lambda Native AOT)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Directory.Build.props'
+      - 'GuidedMentor.sln'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      service:
+        description: 'Service to deploy (or all)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - identity
+          - mentoring
+          - content
+          - engagement
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  AWS_REGION: ap-southeast-2
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish-and-deploy:
+    name: Deploy ${{ matrix.service }} to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - identity
+          - mentoring
+          - content
+          - engagement
+        include:
+          - service: identity
+            project: src/Identity/GuidedMentor.Identity.Api/GuidedMentor.Identity.Api.csproj
+            function_name_prefix: guided-mentor-identity
+          - service: mentoring
+            project: src/Mentoring/GuidedMentor.Mentoring.Api/GuidedMentor.Mentoring.Api.csproj
+            function_name_prefix: guided-mentor-mentoring
+          - service: content
+            project: src/Content/GuidedMentor.Content.Api/GuidedMentor.Content.Api.csproj
+            function_name_prefix: guided-mentor-content
+          - service: engagement
+            project: src/Engagement/GuidedMentor.Engagement.Api/GuidedMentor.Engagement.Api.csproj
+            function_name_prefix: guided-mentor-engagement
+
+    steps:
+      - name: Check if service should be deployed
+        id: should-deploy
+        run: |
+          INPUT_SERVICE="${{ github.event.inputs.service || 'all' }}"
+          if [ "$INPUT_SERVICE" = "all" ] || [ "$INPUT_SERVICE" = "${{ matrix.service }}" ]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout
+        if: steps.should-deploy.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        if: steps.should-deploy.outputs.deploy == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Native AOT
+        if: steps.should-deploy.outputs.deploy == 'true'
+        run: |
+          dotnet publish ${{ matrix.project }} \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained true \
+            -p:PublishAot=true \
+            -p:StripSymbols=true \
+            --output ./publish/${{ matrix.service }}
+
+      - name: Create deployment zip
+        if: steps.should-deploy.outputs.deploy == 'true'
+        run: |
+          cd ./publish/${{ matrix.service }}
+          zip -r ../../${{ matrix.service }}-lambda.zip .
+          cd ../..
+          echo "Package size: $(du -h ${{ matrix.service }}-lambda.zip | cut -f1)"
+
+      - name: Configure AWS credentials
+        if: steps.should-deploy.outputs.deploy == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to Lambda
+        if: steps.should-deploy.outputs.deploy == 'true'
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          FUNCTION_NAME="${{ matrix.function_name_prefix }}-${ENV}"
+          
+          echo "Deploying to Lambda function: ${FUNCTION_NAME}"
+          
+          # Update function code
+          aws lambda update-function-code \
+            --function-name "${FUNCTION_NAME}" \
+            --zip-file "fileb://${{ matrix.service }}-lambda.zip" \
+            --publish
+          
+          # Wait for update to complete
+          aws lambda wait function-updated-v2 \
+            --function-name "${FUNCTION_NAME}"
+
+      - name: Deploy with traffic shifting
+        if: steps.should-deploy.outputs.deploy == 'true'
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          FUNCTION_NAME="${{ matrix.function_name_prefix }}-${ENV}"
+          
+          # Get the new version
+          VERSION=$(aws lambda list-versions-by-function \
+            --function-name "${FUNCTION_NAME}" \
+            --query 'Versions[-1].Version' \
+            --output text)
+          
+          # Get current live version for rollback reference
+          CURRENT_VERSION=$(aws lambda get-alias \
+            --function-name "${FUNCTION_NAME}" \
+            --name "live" \
+            --query 'FunctionVersion' \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -z "$CURRENT_VERSION" ] || [ "$CURRENT_VERSION" = "None" ]; then
+            # First deploy — point alias directly
+            aws lambda create-alias \
+              --function-name "${FUNCTION_NAME}" \
+              --name "live" \
+              --function-version "${VERSION}" || \
+            aws lambda update-alias \
+              --function-name "${FUNCTION_NAME}" \
+              --name "live" \
+              --function-version "${VERSION}"
+          else
+            # Traffic shifting: 10% → monitor 2 min → 100% (or rollback)
+            aws lambda update-alias \
+              --function-name "${FUNCTION_NAME}" \
+              --name "live" \
+              --function-version "${CURRENT_VERSION}" \
+              --routing-config "AdditionalVersionWeights={${VERSION}=0.1}"
+            
+            echo "Traffic shifting: 10% to version ${VERSION}. Monitoring for 2 minutes..."
+            sleep 120
+            
+            # Check for errors in the new version
+            ERROR_COUNT=$(aws cloudwatch get-metric-statistics \
+              --namespace "AWS/Lambda" \
+              --metric-name "Errors" \
+              --dimensions "Name=FunctionName,Value=${FUNCTION_NAME}" "Name=Resource,Value=${FUNCTION_NAME}:${VERSION}" \
+              --start-time "$(date -u -d '2 minutes ago' +%Y-%m-%dT%H:%M:%S)" \
+              --end-time "$(date -u +%Y-%m-%dT%H:%M:%S)" \
+              --period 120 \
+              --statistics Sum \
+              --query 'Datapoints[0].Sum // `0`' \
+              --output text 2>/dev/null || echo "0")
+            
+            if [ "${ERROR_COUNT}" != "0" ] && [ "${ERROR_COUNT}" != "None" ] && [ "${ERROR_COUNT}" != "null" ]; then
+              echo "::error::Errors detected in new version (${ERROR_COUNT} errors). Rolling back!"
+              aws lambda update-alias \
+                --function-name "${FUNCTION_NAME}" \
+                --name "live" \
+                --function-version "${CURRENT_VERSION}" \
+                --routing-config '{}'
+              echo "✗ Rolled back to version ${CURRENT_VERSION}"
+              exit 1
+            fi
+            
+            # No errors — promote to 100%
+            aws lambda update-alias \
+              --function-name "${FUNCTION_NAME}" \
+              --name "live" \
+              --function-version "${VERSION}" \
+              --routing-config '{}'
+            
+            echo "✓ Promoted version ${VERSION} to 100% traffic"
+          fi
+
+      - name: Upload deployment artifact
+        if: steps.should-deploy.outputs.deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-${{ matrix.service }}-${{ github.sha }}
+          path: ${{ matrix.service }}-lambda.zip
+          retention-days: 14
+
+  rollback-on-failure:
+    name: Rollback instructions
+    needs: [publish-and-deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rollback guidance
+        run: |
+          echo "::warning::Deployment failed. To rollback, use Lambda version aliases:"
+          echo "  aws lambda update-alias --function-name <function> --name live --function-version <previous-version>"
+          echo ""
+          echo "Or re-run this workflow with the previous commit SHA."

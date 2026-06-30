@@ -1,0 +1,63 @@
+# terraform-docs configuration
+# Auto-generates README.md per module from variables, outputs, and resources.
+
+formatter: markdown table
+
+header-from: ""
+footer-from: ""
+
+recursive:
+  enabled: true
+  path: modules
+
+content: |-
+  {{ .Header }}
+
+  ## Module: {{ .Module.Name }}
+
+  {{ .Description }}
+
+  ### Requirements
+
+  {{ .Requirements }}
+
+  ### Providers
+
+  {{ .Providers }}
+
+  ### Resources
+
+  {{ .Resources }}
+
+  ### Inputs
+
+  {{ .Inputs }}
+
+  ### Outputs
+
+  {{ .Outputs }}
+
+  {{ .Footer }}
+
+output:
+  file: README.md
+  mode: inject
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+
+settings:
+  anchor: true
+  color: true
+  default: true
+  description: true
+  escape: true
+  hide-empty: false
+  html: true
+  indent: 2
+  lockfile: true
+  read-comments: true
+  required: true
+  sensitive: true
+  type: true

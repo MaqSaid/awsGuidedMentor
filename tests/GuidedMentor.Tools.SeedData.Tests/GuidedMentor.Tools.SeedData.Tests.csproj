@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>GuidedMentor.Tools.SeedData.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- AustralianFakersTests.cs depends on Fakers namespace from task 15.2 -->
+    <Compile Remove="AustralianFakersTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.9.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FsCheck" Version="3.*" />
+    <PackageReference Include="FsCheck.Xunit" Version="3.*" />
+    <PackageReference Include="FluentAssertions" Version="8.*" />
+    <PackageReference Include="NSubstitute" Version="5.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\tools\SeedData\SeedData.csproj" />
+  </ItemGroup>
+
+</Project>

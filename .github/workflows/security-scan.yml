@@ -1,0 +1,197 @@
+name: Security Scan (OWASP ZAP + Audits)
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 6:00 AM AEST (Sunday 20:00 UTC)
+    - cron: '0 20 * * 0'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22'
+  DOTNET_VERSION: '10.0.x'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  security-events: write
+
+jobs:
+  nuget-audit:
+    name: NuGet Vulnerability Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore packages
+        run: dotnet restore GuidedMentor.sln
+
+      - name: Run NuGet audit
+        run: |
+          dotnet list GuidedMentor.sln package --vulnerable --include-transitive 2>&1 | tee nuget-audit-report.txt
+
+      - name: Check for critical/high vulnerabilities
+        run: |
+          if grep -qi "Critical\|High" nuget-audit-report.txt; then
+            echo "::error::Critical or High severity NuGet vulnerabilities detected!"
+            cat nuget-audit-report.txt
+            exit 1
+          fi
+          
+          if grep -q "has the following vulnerable packages" nuget-audit-report.txt; then
+            echo "::warning::NuGet vulnerabilities found (non-critical). Review nuget-audit-report.txt."
+          else
+            echo "✓ No NuGet vulnerabilities detected."
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-audit-report
+          path: nuget-audit-report.txt
+          retention-days: 30
+
+  npm-audit:
+    name: npm Vulnerability Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run npm audit (frontend)
+        working-directory: frontend
+        run: |
+          npm audit --audit-level=high --json > ../npm-audit-frontend.json 2>&1 || true
+          npm audit --audit-level=high 2>&1 | tee ../npm-audit-frontend.txt
+        continue-on-error: true
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Run npm audit (e2e)
+        working-directory: e2e
+        run: |
+          npm audit --audit-level=high --json > ../npm-audit-e2e.json 2>&1 || true
+          npm audit --audit-level=high 2>&1 | tee ../npm-audit-e2e.txt
+        continue-on-error: true
+
+      - name: Check for high/critical vulnerabilities
+        run: |
+          FAILED=false
+          
+          if grep -qi "high\|critical" npm-audit-frontend.txt; then
+            echo "::error::High/Critical npm vulnerabilities in frontend!"
+            FAILED=true
+          fi
+          
+          if grep -qi "high\|critical" npm-audit-e2e.txt; then
+            echo "::warning::High/Critical npm vulnerabilities in e2e (non-blocking)."
+          fi
+          
+          if [ "$FAILED" = "true" ]; then
+            exit 1
+          fi
+          
+          echo "✓ No high/critical npm vulnerabilities in frontend."
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-reports
+          path: |
+            npm-audit-frontend.txt
+            npm-audit-frontend.json
+            npm-audit-e2e.txt
+          retention-days: 30
+
+  owasp-zap:
+    name: OWASP ZAP API Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ vars.STAGING_API_URL }}
+          rules_file_name: '.github/zap-rules.tsv'
+          cmd_options: '-a -j'
+          fail_action: true
+          allow_issue_writing: true
+          issue_title: 'OWASP ZAP Security Scan Report'
+
+      - name: OWASP ZAP API Scan
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          target: ${{ vars.STAGING_API_URL }}/swagger/v1/swagger.json
+          format: openapi
+          rules_file_name: '.github/zap-rules.tsv'
+          cmd_options: '-a'
+          fail_action: true
+          allow_issue_writing: true
+          issue_title: 'OWASP ZAP API Scan Report'
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-scan-reports
+          path: |
+            report_html.html
+            report_json.json
+          retention-days: 30
+
+  security-summary:
+    name: Security Summary
+    needs: [nuget-audit, npm-audit]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Evaluate results
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.nuget-audit.result }}" = "success" ]; then
+            echo "✅ NuGet Audit: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ NuGet Audit: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.npm-audit.result }}" = "success" ]; then
+            echo "✅ npm Audit: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ npm Audit: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*Reports available in workflow artifacts.*" >> $GITHUB_STEP_SUMMARY

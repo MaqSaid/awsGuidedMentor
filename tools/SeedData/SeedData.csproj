@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>GuidedMentor.Tools.SeedData</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GuidedMentor.Tools.SeedData.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.0-preview.7" />
+    <PackageReference Include="Bogus" Version="35.*" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\GuidedMentor.SharedKernel\GuidedMentor.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Mentoring\GuidedMentor.Mentoring.Domain\GuidedMentor.Mentoring.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Domain\GuidedMentor.Engagement.Domain.csproj" />
+    <ProjectReference Include="..\..\tests\GuidedMentor.SharedTestUtils\GuidedMentor.SharedTestUtils.csproj" />
+  </ItemGroup>
+
+</Project>

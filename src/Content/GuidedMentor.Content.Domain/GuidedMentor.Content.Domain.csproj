@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>GuidedMentor.Content.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\GuidedMentor.SharedKernel\GuidedMentor.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

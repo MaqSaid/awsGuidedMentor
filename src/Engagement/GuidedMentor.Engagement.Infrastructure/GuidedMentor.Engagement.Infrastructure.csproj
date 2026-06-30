@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>GuidedMentor.Engagement.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.DynamoDBv2" Version="3.*" />
+    <PackageReference Include="AWSSDK.AppSync" Version="3.*" />
+    <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.*" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
+    <PackageReference Include="Npgsql" Version="9.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GuidedMentor.Engagement.Application\GuidedMentor.Engagement.Application.csproj" />
+    <ProjectReference Include="..\..\Shared\GuidedMentor.SharedKernel\GuidedMentor.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

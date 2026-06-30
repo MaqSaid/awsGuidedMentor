@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>GuidedMentor.Mentoring.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GuidedMentor.Mentoring.Application\GuidedMentor.Mentoring.Application.csproj" />
+  </ItemGroup>
+
+</Project>

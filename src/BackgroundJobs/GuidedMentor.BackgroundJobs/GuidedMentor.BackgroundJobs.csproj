@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>GuidedMentor.BackgroundJobs</RootNamespace>
+    <OutputType>Library</OutputType>
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.Core" Version="2.5.0" />
+    <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.4" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-preview.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0-preview.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0-preview.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Mentoring\GuidedMentor.Mentoring.Application\GuidedMentor.Mentoring.Application.csproj" />
+    <ProjectReference Include="..\..\Engagement\GuidedMentor.Engagement.Application\GuidedMentor.Engagement.Application.csproj" />
+    <ProjectReference Include="..\..\Engagement\GuidedMentor.Engagement.Infrastructure\GuidedMentor.Engagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\GuidedMentor.SharedKernel\GuidedMentor.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

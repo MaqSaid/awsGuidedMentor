@@ -1,0 +1,14 @@
+{
+  "name": "@guided-mentor/shared",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types and interfaces for GuidedMentor platform",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

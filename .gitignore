@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# .NET build outputs
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+publish/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+
+# IDE
+.vs/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Frontend build artifacts
+dist/
+.vercel/
+
+# Test results
+TestResults/
+coverage/
+playwright-report/
+test-results/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Package lock (keep root, ignore nested)
+!package-lock.json
+!frontend/host-shell/package-lock.json

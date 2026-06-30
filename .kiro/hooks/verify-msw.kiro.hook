@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Verify MSW Handlers",
+  "description": "Runs frontend tests when MSW handlers change",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["frontend/host-shell/src/mocks/handlers.ts"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd frontend && npm run test"
+  }
+}

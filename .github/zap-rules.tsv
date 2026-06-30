@@ -1,0 +1,6 @@
+10003	WARN	(Vulnerable JS Library - informational only)
+10015	IGNORE	(Incomplete or No Cache-control Header Set - managed by CloudFront)
+10027	IGNORE	(Information Disclosure - Suspicious Comments)
+10096	WARN	(Timestamp Disclosure)
+10049	IGNORE	(Storable and Cacheable Content - expected for static assets)
+90033	WARN	(Loosely Scoped Cookie)

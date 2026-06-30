@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Sync Project Standards",
+  "description": "After each spec task is completed, reviews the codebase against the requirements document and updates or creates steering files, skills, and coding standards to reflect the current state of the project.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A spec task just completed. Review the project state against the requirements in .kiro/specs/aws-community-guided-mentor/requirements.md and the current implementation. Then:\n\n1. **Check steering files** (.kiro/steering/): Review coding-standards.md, api-conventions.md, design-system.md, and terraform-conventions.md. If the completed task introduced new patterns, conventions, or architectural decisions not yet captured, update the relevant steering file. If a new category of convention has emerged (e.g., testing patterns, event handling, security), create a new steering file.\n\n2. **Check skills** (.kiro/skills/): If the completed task revealed a repeatable scaffolding pattern that would be useful for future development (e.g., adding a new event handler, adding a new DynamoDB repository, adding a new frontend page with MSW), check if an existing skill covers it. If not, create a new skill with the correct steps and checklist.\n\n3. **Check coding standards** (.kiro/steering/coding-standards.md): If the implementation introduced naming conventions, error handling patterns, test structure patterns, or architectural rules not yet documented, add them.\n\nRules:\n- Only make changes when the completed task genuinely introduces something new or changes existing patterns.\n- Do NOT make trivial or cosmetic updates.\n- Preserve existing steering file front-matter (inclusion, fileMatchPattern).\n- Use the same markdown format as existing files.\n- When creating new steering files, add appropriate front-matter for conditional inclusion.\n- When creating new skills, follow the SKILL.md format with name, description, steps, and checklist."
+  }
+}
