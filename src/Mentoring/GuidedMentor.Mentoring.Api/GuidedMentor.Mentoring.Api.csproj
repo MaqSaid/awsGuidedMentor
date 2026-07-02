@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <RootNamespace>GuidedMentor.Mentoring.Api</RootNamespace>
-    <PublishAot>true</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>

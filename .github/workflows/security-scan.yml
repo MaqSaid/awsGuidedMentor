@@ -151,7 +151,7 @@ jobs:
       - name: OWASP ZAP API Scan
         uses: zaproxy/action-api-scan@v0.7.0
         with:
-          target: ${{ vars.STAGING_API_URL }}/swagger/v1/swagger.json
+          target: ${{ vars.STAGING_API_URL }}/openapi/v1.json
           format: openapi
           rules_file_name: '.github/zap-rules.tsv'
           cmd_options: '-a'

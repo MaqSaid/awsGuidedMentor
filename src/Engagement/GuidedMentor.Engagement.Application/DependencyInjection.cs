@@ -23,6 +23,9 @@ public static class DependencyInjection
         // AI Help Assistant plugin (scoped per request, uses IChatClient from infrastructure)
         services.AddScoped<HelpAssistantPlugin>();
 
+        // FAQ lookup service (singleton — entries loaded once from embedded resource)
+        services.AddSingleton<FaqLookupService>();
+
         // Rate limiter (singleton — maintains per-user windows across requests)
         services.AddSingleton<IChatRateLimiter, ChatRateLimiter>();
 

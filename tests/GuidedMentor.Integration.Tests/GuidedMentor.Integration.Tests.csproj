@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GuidedMentor.Integration.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.9.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" Version="8.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0-preview.5.25277.114" />
+    <PackageReference Include="NSubstitute" Version="5.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Identity\GuidedMentor.Identity.Api\GuidedMentor.Identity.Api.csproj" />
+    <ProjectReference Include="..\..\src\Mentoring\GuidedMentor.Mentoring.Api\GuidedMentor.Mentoring.Api.csproj" />
+    <ProjectReference Include="..\..\src\Content\GuidedMentor.Content.Api\GuidedMentor.Content.Api.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Api\GuidedMentor.Engagement.Api.csproj" />
+  </ItemGroup>
+
+</Project>

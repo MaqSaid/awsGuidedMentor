@@ -9,19 +9,16 @@ namespace GuidedMentor.Identity.Application.Interfaces;
 public interface ICognitoAuthService
 {
     /// <summary>
-    /// Creates a new user with email/password in Cognito and sends verification email.
+    /// Initiates the CUSTOM_AUTH flow for magic link authentication.
+    /// Triggers the DefineAuthChallenge and CreateAuthChallenge Lambda triggers.
     /// </summary>
-    Task<AuthResult> SignUpWithEmailAsync(string email, string password, CancellationToken ct);
+    Task<AuthResult> InitiateCustomAuthAsync(string email, CancellationToken ct);
 
     /// <summary>
-    /// Verifies an email address using the 6-digit code sent during signup.
+    /// Responds to the custom auth challenge with the magic link token.
+    /// On success, Cognito issues JWT tokens.
     /// </summary>
-    Task<AuthResult> VerifyEmailAsync(string email, string code, CancellationToken ct);
-
-    /// <summary>
-    /// Authenticates a user with email and password, returning JWT tokens on success.
-    /// </summary>
-    Task<AuthResult> SignInAsync(string email, string password, CancellationToken ct);
+    Task<AuthResult> RespondToCustomChallengeAsync(string email, string token, string session, CancellationToken ct);
 
     /// <summary>
     /// Invalidates all tokens for the user (global sign-out).

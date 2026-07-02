@@ -44,6 +44,9 @@ test-results/
 # Logs
 *.log
 
+# Local dev
+appsettings.Development.json
+
 # Package lock (keep root, ignore nested)
 !package-lock.json
 !frontend/host-shell/package-lock.json

@@ -176,6 +176,47 @@ public sealed class HelpAssistantPlugin
     }
 
     /// <summary>
+    /// Streams a response using a focused system prompt subset (for navigation queries).
+    /// Reduces token usage by ~85% compared to the full system prompt.
+    /// </summary>
+    /// <param name="userMessage">The sanitized user message.</param>
+    /// <param name="conversationHistory">Previous messages in this session for context continuity.</param>
+    /// <param name="systemPromptOverride">A focused system prompt to use instead of the full prompt.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>An async enumerable of streaming response chunks.</returns>
+    public async IAsyncEnumerable<string> StreamResponseAsync(
+        string userMessage,
+        IReadOnlyList<ChatMessage> conversationHistory,
+        string systemPromptOverride,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var messages = new List<ChatMessage>(conversationHistory.Count + 2)
+        {
+            new(ChatRole.System, systemPromptOverride)
+        };
+
+        foreach (var historyMessage in conversationHistory)
+        {
+            messages.Add(historyMessage);
+        }
+
+        messages.Add(new ChatMessage(ChatRole.User, userMessage));
+
+        _logger.LogInformation(
+            "Streaming with focused prompt. PromptLength={Length}, HistoryCount={HistoryCount}",
+            systemPromptOverride.Length,
+            conversationHistory.Count);
+
+        await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, cancellationToken: ct))
+        {
+            if (update.Text is not null)
+            {
+                yield return update.Text;
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets a non-streaming response from the AI Help Assistant (for fallback/testing).
     /// </summary>
     /// <param name="userMessage">The sanitized user message.</param>

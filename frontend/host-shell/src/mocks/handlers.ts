@@ -227,11 +227,26 @@ export const handlers = [
     });
   }),
 
-  http.post('/v1/auth/signin', () => HttpResponse.json({
-    accessToken: 'mock-token',
-    refreshToken: 'mock-refresh',
-    user: menteeUser,
+  http.post('/v1/auth/magic-link', () => HttpResponse.json({
+    message: "If this email is registered, you'll receive a sign-in link shortly.",
   })),
+
+  http.post('/v1/auth/verify-magic-link', () => {
+    const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({
+      sub: menteeUser.userId,
+      email: menteeUser.email,
+      name: menteeUser.displayName,
+      exp: Math.floor(Date.now() / 1000) + 900,
+    }));
+    return HttpResponse.json({
+      accessToken: `${header}.${payload}.mock-sig`,
+      refreshToken: 'mock-refresh-token',
+      idToken: `${header}.${payload}.mock-sig`,
+      activeRole: menteeUser.activeRole,
+      expiresIn: 900,
+    });
+  }),
 
   http.post('/v1/users/toggle-role', () => HttpResponse.json({ success: true })),
 

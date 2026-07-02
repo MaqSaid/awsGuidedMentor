@@ -1,0 +1,46 @@
+{
+  "career_transition": {
+    "title": "Career Transition Planning Session",
+    "agenda": [
+      { "title": "Introduction & Background", "durationMinutes": 5, "description": "Share your current role and where you want to go" },
+      { "title": "Skills Gap Analysis", "durationMinutes": 10, "description": "Identify what you need to learn for your target role" },
+      { "title": "Action Plan Discussion", "durationMinutes": 12, "description": "Create a concrete timeline with milestones" },
+      { "title": "Resources & Next Steps", "durationMinutes": 8, "description": "Identify learning resources and set first homework" }
+    ],
+    "prework": ["List your top 3 target roles", "Identify 3 skills you want to develop"],
+    "followup": ["Research 2 certifications relevant to your goal", "Draft a 3-month learning timeline"]
+  },
+  "skill_development": {
+    "title": "Skill Development Kickoff",
+    "agenda": [
+      { "title": "Current Skills Review", "durationMinutes": 5, "description": "Discuss what you already know" },
+      { "title": "Learning Objectives", "durationMinutes": 10, "description": "Define specific skills to develop over 3 months" },
+      { "title": "Hands-on Focus Area", "durationMinutes": 12, "description": "Pick the first skill to deep dive into" },
+      { "title": "Practice Plan", "durationMinutes": 8, "description": "Set up a regular practice schedule" }
+    ],
+    "prework": ["List AWS services you want to learn", "Complete one free AWS tutorial"],
+    "followup": ["Set up an AWS free tier account", "Complete the first lab exercise"]
+  },
+  "certification_preparation": {
+    "title": "Certification Prep Strategy",
+    "agenda": [
+      { "title": "Exam Overview", "durationMinutes": 5, "description": "Review the certification exam structure and domains" },
+      { "title": "Knowledge Assessment", "durationMinutes": 10, "description": "Identify strong and weak areas" },
+      { "title": "Study Plan Creation", "durationMinutes": 12, "description": "Build a week-by-week study schedule" },
+      { "title": "Resources & Practice Tests", "durationMinutes": 8, "description": "Identify study materials and practice exam sources" }
+    ],
+    "prework": ["Review the official exam guide", "Take a practice assessment to baseline your knowledge"],
+    "followup": ["Register for the exam (set a target date)", "Complete first study module"]
+  },
+  "project_guidance": {
+    "title": "Project Architecture Review",
+    "agenda": [
+      { "title": "Project Overview", "durationMinutes": 5, "description": "Present your project goals and constraints" },
+      { "title": "Architecture Discussion", "durationMinutes": 12, "description": "Review current or planned architecture" },
+      { "title": "Best Practices", "durationMinutes": 10, "description": "Discuss AWS best practices for your use case" },
+      { "title": "Action Items", "durationMinutes": 8, "description": "Define specific next steps for the project" }
+    ],
+    "prework": ["Draw a rough architecture diagram", "List your main technical challenges"],
+    "followup": ["Refine the architecture diagram based on discussion", "Start implementing the first component"]
+  }
+}

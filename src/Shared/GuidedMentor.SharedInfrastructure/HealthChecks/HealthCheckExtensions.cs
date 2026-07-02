@@ -1,5 +1,3 @@
-using Amazon.BedrockRuntime;
-using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
@@ -7,71 +5,26 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using System.Text.Json;
 
 namespace GuidedMentor.SharedInfrastructure.HealthChecks;
 
 /// <summary>
-/// Extension methods for registering health checks per microservice.
-/// Each service registers checks for its specific dependencies.
+/// Extension methods for registering health checks.
+/// Refactored: removed DynamoDB and Bedrock checks, kept PostgreSQL.
 /// </summary>
 public static class HealthCheckExtensions
 {
     /// <summary>
-    /// Adds a DynamoDB table health check.
+    /// Adds a PostgreSQL health check.
     /// </summary>
-    public static IHealthChecksBuilder AddDynamoDbCheck(
-        this IHealthChecksBuilder builder,
-        string tableName,
-        string? name = null,
-        HealthStatus? failureStatus = null,
-        IEnumerable<string>? tags = null)
-    {
-        return builder.Add(new HealthCheckRegistration(
-            name ?? $"dynamodb-{tableName}",
-            sp =>
-            {
-                var client = sp.GetRequiredService<IAmazonDynamoDB>();
-                var logger = sp.GetRequiredService<ILogger<DynamoDbHealthCheck>>();
-                return new DynamoDbHealthCheck(client, tableName, logger);
-            },
-            failureStatus,
-            tags));
-    }
-
-    /// <summary>
-    /// Adds a Bedrock Runtime health check.
-    /// </summary>
-    public static IHealthChecksBuilder AddBedrockCheck(
+    public static IHealthChecksBuilder AddPostgresCheck(
         this IHealthChecksBuilder builder,
         string? name = null,
         HealthStatus? failureStatus = null,
         IEnumerable<string>? tags = null)
     {
         return builder.Add(new HealthCheckRegistration(
-            name ?? "bedrock-runtime",
-            sp =>
-            {
-                var client = sp.GetRequiredService<IAmazonBedrockRuntime>();
-                var logger = sp.GetRequiredService<ILogger<BedrockHealthCheck>>();
-                return new BedrockHealthCheck(client, logger);
-            },
-            failureStatus,
-            tags));
-    }
-
-    /// <summary>
-    /// Adds an Aurora PostgreSQL health check.
-    /// Only registers if NpgsqlDataSource is available in DI.
-    /// </summary>
-    public static IHealthChecksBuilder AddAuroraCheck(
-        this IHealthChecksBuilder builder,
-        string? name = null,
-        HealthStatus? failureStatus = null,
-        IEnumerable<string>? tags = null)
-    {
-        return builder.Add(new HealthCheckRegistration(
-            name ?? "aurora-postgresql",
+            name ?? "postgresql",
             sp =>
             {
                 var dataSource = sp.GetRequiredService<NpgsqlDataSource>();
@@ -85,7 +38,6 @@ public static class HealthCheckExtensions
     /// <summary>
     /// Maps the /v1/health endpoint using ASP.NET Core health checks infrastructure.
     /// Returns 200 when all checks pass, 503 when any check is unhealthy.
-    /// Response includes individual check statuses for diagnostics.
     /// </summary>
     public static WebApplication MapHealthCheckEndpoint(this WebApplication app)
     {

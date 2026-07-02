@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Shared\GuidedMentor.SharedInfrastructure\GuidedMentor.SharedInfrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\GuidedMentor.Identity.Application\GuidedMentor.Identity.Application.csproj" />
   </ItemGroup>
 

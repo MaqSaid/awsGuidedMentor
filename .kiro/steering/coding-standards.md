@@ -26,18 +26,50 @@ inclusion: always
 ### AOT Compatibility
 - Use `System.Text.Json` source generation (`[JsonSerializable]` contexts) in API projects
 - Avoid `System.Reflection.Emit` and dynamic proxies
-- Mark Lambda entry points with `[LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]`
+- Note: AOT is optional for the free stack (Railway runs standard .NET); keep AOT-ready patterns for future AWS migration
 
 ### Error Handling
 - Return `Result` or `Result<T>` from handlers — never throw for business logic failures
-- Reserve exceptions for infrastructure failures (network, DynamoDB, Bedrock)
+- Reserve exceptions for infrastructure failures (network, PostgreSQL, external APIs)
 - Use Polly v8 resilience pipelines for retries, not manual retry loops
 
-### DynamoDB
-- Use `IAmazonDynamoDB` directly (not Document Model) for AOT compatibility
-- Batch writes in chunks of 25 (DynamoDB limit)
-- Always include `ConsistentRead = true` for critical reads (locks, seed markers)
-- Use conditional writes (`attribute_not_exists`) for idempotency
+### Authentication
+- Passwordless only — magic link via self-issued JWT
+- Never store passwords — users authenticate via magic link email or Google OAuth
+- Magic link tokens: UUID, 10-minute TTL, single-use, stored in `auth_tokens` PostgreSQL table
+- Rate limit: max 3 magic link requests per email per 15 minutes
+- Always return 200 on magic link request (prevent email enumeration)
+- Expired tokens cleaned by Hangfire job (every 5 minutes)
+
+### PostgreSQL (EF Core)
+- Use `GuidedMentorDbContext` for all data access
+- EF entities are persistence models — separate from Domain entities
+- Use `JSONB` columns for complex nested data
+- Use `TEXT[]` columns for string arrays
+- Repository methods return Domain entities (map internally)
+- Use `SaveChangesAsync()` for atomic writes
+- Explicit transactions for multi-entity operations
+- Connection string from `ConnectionStrings:DefaultConnection`
+
+### Background Jobs (Hangfire)
+- One class per job in `SharedInfrastructure/Jobs/`
+- Always log start/end with ILogger
+- Handle partial failures gracefully
+- Use cron expressions for scheduling
+- Jobs registered in Program.cs startup
+
+### Email (Gmail SMTP)
+- Use `IEmailSender` interface for all email operations
+- Implementation uses MailKit + Gmail SMTP (port 587, StartTLS)
+- Configuration in `Email` section of appsettings
+- Rate limit: 500 emails/day (Gmail personal account limit)
+- Never log email passwords or app passwords
+
+### Real-Time (SignalR)
+- SignalR hub at `/hubs/notifications`
+- Frontend connects via `@microsoft/signalr` client
+- Send notifications via `IHubContext<NotificationHub>`
+- Fallback: polling every 30 seconds if WebSocket fails
 
 ## React/TypeScript Frontend Conventions
 
@@ -78,13 +110,13 @@ inclusion: always
 ### Clean Architecture Layers
 - **Domain** → zero dependencies on other layers; pure business logic, entities, value objects
 - **Application** → depends only on Domain; contains commands, queries, handlers, interfaces
-- **Infrastructure** → implements Application interfaces; AWS SDK, DynamoDB, Bedrock
+- **Infrastructure** → implements Application interfaces; EF Core, PostgreSQL, SignalR, Hangfire, MailKit
 - **Api** → thin HTTP layer; maps requests to MediatR commands/queries
 
 ### Domain-Driven Design
 - Each bounded context (Identity, Mentoring, Content, Engagement) is independent
 - Cross-context communication via interfaces (anti-corruption layer) — never direct references
-- Domain events for cross-context side effects (via EventBridge)
+- Domain events for cross-context side effects (via MediatR notifications + SignalR)
 - Aggregate roots enforce invariants; entities are only modified through their aggregate
 
 ### MediatR Pipeline
@@ -136,8 +168,8 @@ inclusion: always
 - Required tags: Environment, Service, BoundedContext
 - Conditional resources: `count = var.enable_{feature} ? 1 : 0`
 - Data stores: `lifecycle { prevent_destroy = true }`
-- DynamoDB: on-demand billing, PITR enabled
-- S3: block public access, versioning, encryption
+- DynamoDB: on-demand billing, PITR enabled (future AWS migration)
+- S3: block public access, versioning, encryption (future AWS migration)
 
 ## Frontend Design Tokens
 

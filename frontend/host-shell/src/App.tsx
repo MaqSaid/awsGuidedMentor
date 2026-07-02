@@ -1,10 +1,12 @@
 import { lazy, Suspense, useContext } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthContext } from './providers/AuthProvider';
 import { NavBar } from './components/NavBar';
 import LandingPage from './pages/LandingPage';
 
 // Lazy-loaded routes (code-split per page)
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const VerifyMagicLink = lazy(() => import('./pages/VerifyMagicLink'));
 const RoleSelector = lazy(() => import('./pages/RoleSelector'));
 const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'));
 const MenteeDashboard = lazy(() => import('./pages/MenteeDashboard'));
@@ -66,7 +68,8 @@ function App() {
             <Route path="/dashboard" element={<DashboardRouter />} />
             <Route path="/browse" element={<BrowseMentors />} />
             <Route path="/sessions/:id/plan" element={<SessionPlan />} />
-            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/verify" element={<VerifyMagicLink />} />
           </Routes>
         </Suspense>
       </main>

@@ -24,10 +24,8 @@ builder.Services.AddMediatR(cfg =>
 // Register AWS AppConfig feature flags
 builder.Services.AddFeatureFlags(builder.Configuration);
 
-// Register health checks for Content service dependencies (DynamoDB + Bedrock)
-builder.Services.AddHealthChecks()
-    .AddDynamoDbCheck("Sessions", name: "dynamodb-sessions")
-    .AddBedrockCheck();
+// Register health checks for Content service dependencies
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

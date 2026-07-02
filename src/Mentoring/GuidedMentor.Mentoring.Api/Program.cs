@@ -17,10 +17,7 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddFeatureFlags(builder.Configuration);
 
 // Register health checks for Mentoring service dependencies
-builder.Services.AddHealthChecks()
-    .AddDynamoDbCheck("Sessions", name: "dynamodb-sessions")
-    .AddDynamoDbCheck("Mentors", name: "dynamodb-mentors")
-    .AddDynamoDbCheck("Mentees", name: "dynamodb-mentees");
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

@@ -15,20 +15,28 @@ public sealed class ChatWithAssistantHandlerTests
 {
     private readonly IChatClient _mockChatClient;
     private readonly IChatRateLimiter _mockRateLimiter;
+    private readonly IIntentClassifier _mockIntentClassifier;
     private readonly ChatWithAssistantHandler _handler;
 
     public ChatWithAssistantHandlerTests()
     {
         _mockChatClient = Substitute.For<IChatClient>();
         _mockRateLimiter = Substitute.For<IChatRateLimiter>();
+        _mockIntentClassifier = Substitute.For<IIntentClassifier>();
 
         var plugin = new HelpAssistantPlugin(_mockChatClient, NullLogger<HelpAssistantPlugin>.Instance);
 
         _mockRateLimiter.IsAllowed(Arg.Any<Guid>()).Returns(true);
         _mockRateLimiter.GetRemainingMessages(Arg.Any<Guid>()).Returns(19);
 
+        // Default: classify as PlatformHelp (full Bedrock path)
+        _mockIntentClassifier.ClassifyAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ChatIntent.PlatformHelp);
+
         _handler = new ChatWithAssistantHandler(
             plugin,
+            new FaqLookupService(),
+            _mockIntentClassifier,
             _mockRateLimiter,
             NullLogger<ChatWithAssistantHandler>.Instance);
     }

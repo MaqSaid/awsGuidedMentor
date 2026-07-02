@@ -21,12 +21,14 @@
     <PackageReference Include="NSubstitute" Version="5.*" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="9.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.*" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.*" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Domain\GuidedMentor.Engagement.Domain.csproj" />
     <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Application\GuidedMentor.Engagement.Application.csproj" />
+    <ProjectReference Include="..\..\src\Engagement\GuidedMentor.Engagement.Infrastructure\GuidedMentor.Engagement.Infrastructure.csproj" />
     <ProjectReference Include="..\GuidedMentor.SharedTestUtils\GuidedMentor.SharedTestUtils.csproj" />
   </ItemGroup>
 

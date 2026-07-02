@@ -1,42 +1,71 @@
 ---
 name: add-background-job
-description: Scaffolds a new background job with Lambda function, MediatR command/handler, and EventBridge scheduler rule
+description: Scaffolds a new background job using Hangfire with recurring schedule or fire-and-forget pattern
 inclusion: manual
 ---
 
-# Add Background Job
+# Add Background Job (Hangfire)
 
-Creates a scheduled or event-driven background job as a Lambda function.
+Creates a scheduled or event-driven background job using Hangfire (replaces EventBridge Lambda).
 
 ## Input Required
-- Job name (e.g., SendWeeklyDigest)
-- Schedule (rate or cron expression)
+- Job name (e.g., CleanupExpiredTokens, SendCompletionReminder)
+- Schedule (cron expression or one-time delay)
 - What it does
 - Which data it touches
 
 ## Steps
 
-1. **Create MediatR Command** in `src/BackgroundJobs/Commands/`:
-   ```csharp
-   public sealed record {JobName}Command() : IRequest<Result>;
-   ```
+### 1. Create job class
+`src/Shared/GuidedMentor.SharedInfrastructure/Jobs/{JobName}Job.cs`
 
-2. **Create Handler** in same directory:
-   - Inject repositories, log start/end, handle partial failures
+```csharp
+namespace GuidedMentor.SharedInfrastructure.Jobs;
 
-3. **Create Lambda Function** in `src/BackgroundJobs/Functions/`:
-   - Use ServiceProviderFactory for DI
-   - Mark with `[LambdaSerializer]`
-   - Log AwsRequestId for tracing
+public sealed class {JobName}Job
+{
+    private readonly GuidedMentorDbContext _db;
+    private readonly ILogger<{JobName}Job> _logger;
 
-4. **Add EventBridge Scheduler** in `infrastructure/modules/events/main.tf`
+    public {JobName}Job(GuidedMentorDbContext db, ILogger<{JobName}Job> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
-5. **Add SQS DLQ** (14-day retention)
+    public async Task ExecuteAsync(CancellationToken ct = default)
+    {
+        _logger.LogInformation("{JobName} started");
+        // Job logic here
+        _logger.LogInformation("{JobName} completed");
+    }
+}
+```
 
-6. **Verify**: `dotnet build` passes
+### 2. Register the recurring job
+In `Program.cs` or a startup extension:
+```csharp
+RecurringJob.AddOrUpdate<{JobName}Job>(
+    "{job-name}",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/5 * * * *"); // every 5 minutes
+```
+
+### 3. Write unit test
+Test the job logic in isolation (mock DbContext or use in-memory provider).
+
+### 4. Verify
+`dotnet build -c Release`
 
 ## Conventions
-- One Lambda per job
-- Always include DLQ
-- Use Result return type
-- Log: items processed, items failed, duration
+- One class per job
+- Always log start/end
+- Handle partial failures gracefully
+- Use `ILogger` for observability
+- Cron expressions: use https://crontab.guru for reference
+
+## Common schedules
+- Token cleanup: `*/5 * * * *` (every 5 min)
+- Completion reminders: `0 9 * * *` (daily 9 AM)
+- Analytics aggregation: `0 * * * *` (hourly)
+- Opportunity expiry: `0 0 * * *` (daily midnight)

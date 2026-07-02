@@ -79,11 +79,11 @@ export function AdminDashboardPage() {
   return (
     <div
       data-testid="admin-dashboard-page"
-      className="min-h-screen p-8 space-y-8"
+      className="min-h-screen px-4 md:px-8 py-6 md:py-8 space-y-6 md:space-y-8"
       style={{ background: 'var(--color-background)' }}
     >
       {/* Header */}
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1
             className="text-3xl font-bold"
@@ -121,11 +121,11 @@ export function AdminDashboardPage() {
 
       {/* Stats Cards */}
       <section aria-label="Platform statistics">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {statCards.map((card) => (
             <div
               key={card.label}
-              className="glass-card p-6 rounded-xl"
+              className="glass-card p-4 md:p-6 rounded-xl"
               role="group"
               aria-label={card.label}
             >
@@ -154,7 +154,7 @@ export function AdminDashboardPage() {
       </section>
 
       {/* Main Grid: User Management + Audit Log */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* User Management Panel */}
         <section aria-label="User management">
           <UserSearchPanel />
@@ -167,7 +167,7 @@ export function AdminDashboardPage() {
       </div>
 
       {/* Secondary Grid: Feature Flags + Maintenance Mode */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Feature Flags Panel */}
         <section aria-label="Feature flags">
           <FeatureFlagPanel />

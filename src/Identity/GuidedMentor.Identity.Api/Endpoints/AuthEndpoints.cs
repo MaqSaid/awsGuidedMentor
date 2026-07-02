@@ -5,6 +5,7 @@ using GuidedMentor.Identity.Application.Commands.Onboarding;
 using GuidedMentor.Identity.Application.Commands.RoleSelection;
 using GuidedMentor.Identity.Application.Commands.Settings;
 using GuidedMentor.Identity.Application.Commands.Upload;
+using GuidedMentor.Identity.Application.DTOs;
 using GuidedMentor.SharedKernel;
 using MediatR;
 
@@ -22,39 +23,44 @@ public static class AuthEndpoints
         var auth = app.MapGroup("/v1/auth")
             .WithTags("Authentication");
 
-        auth.MapPost("/signup", async (SignupRequest request, IMediator mediator, CancellationToken ct) =>
+        // POST /v1/auth/magic-link — Request a magic link
+        auth.MapPost("/magic-link", async (MagicLinkRequest request, IMediator mediator, CancellationToken ct) =>
         {
-            var command = new EmailSignupCommand(request.Email, request.Password);
+            var command = new RequestMagicLinkCommand(request.Email);
             var result = await mediator.Send(command, ct);
-            return result.IsSuccess
-                ? Results.Ok(new { message = "Verification code sent to your email." })
-                : Results.BadRequest(new { error = result.Error });
-        });
+            // Always return 200 to prevent email enumeration
+            return Results.Ok(new { message = "If this email is registered, you'll receive a sign-in link shortly." });
+        })
+        .WithName("RequestMagicLink")
+        .WithDescription("Sends a magic link to the user's email for passwordless authentication.")
+        .Produces(StatusCodes.Status200OK)
+        .AllowAnonymous();
 
-        auth.MapPost("/verify", async (VerifyEmailRequest request, IMediator mediator, CancellationToken ct) =>
+        // POST /v1/auth/verify-magic-link — Verify magic link token
+        auth.MapPost("/verify-magic-link", async (VerifyMagicLinkRequest request, IMediator mediator, CancellationToken ct) =>
         {
-            var command = new VerifyEmailCommand(request.Email, request.Code);
-            var result = await mediator.Send(command, ct);
-            return result.IsSuccess
-                ? Results.Ok(new { message = "Email verified successfully." })
-                : Results.BadRequest(new { error = result.Error });
-        });
-
-        auth.MapPost("/signin", async (SignInRequest request, IMediator mediator, CancellationToken ct) =>
-        {
-            var command = new SignInCommand(request.Email, request.Password);
+            var command = new VerifyMagicLinkCommand(request.Email, request.Token);
             var result = await mediator.Send(command, ct);
             return result.IsSuccess
                 ? Results.Ok(result.Value)
-                : Results.Unauthorized();
-        });
+                : Results.BadRequest(new { error = result.Error });
+        })
+        .WithName("VerifyMagicLink")
+        .WithDescription("Verifies a magic link token and returns JWT tokens.")
+        .Produces<AuthResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .AllowAnonymous();
 
         auth.MapPost("/google", async (GoogleOAuthRequest request, IMediator mediator, CancellationToken ct) =>
         {
             var command = new GoogleOAuthSignupCommand(request.Code);
             var result = await mediator.Send(command, ct);
             return Results.Ok(result);
-        });
+        })
+        .WithName("GoogleOAuth")
+        .WithDescription("Exchanges a Google OAuth authorization code for JWT tokens.")
+        .Produces(StatusCodes.Status200OK)
+        .AllowAnonymous();
 
         auth.MapPost("/refresh", async (RefreshTokenRequest request, IMediator mediator, CancellationToken ct) =>
         {
@@ -63,7 +69,12 @@ public static class AuthEndpoints
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.Unauthorized();
-        });
+        })
+        .WithName("RefreshToken")
+        .WithDescription("Exchanges a refresh token for a new access token.")
+        .Produces<AuthResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .AllowAnonymous();
 
         auth.MapPost("/signout", async (HttpContext httpContext, IMediator mediator, CancellationToken ct) =>
         {
@@ -73,7 +84,12 @@ public static class AuthEndpoints
             var command = new SignOutCommand(accessToken);
             var result = await mediator.Send(command, ct);
             return result.IsSuccess ? Results.NoContent() : Results.BadRequest(new { error = result.Error });
-        }).RequireAuthorization();
+        })
+        .WithName("SignOut")
+        .WithDescription("Invalidates the current access token and signs out the user.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .RequireAuthorization();
 
         // === Role Management (JWT required) ===
         var role = app.MapGroup("/v1/role")
@@ -232,9 +248,8 @@ public static class AuthEndpoints
 }
 
 // Request DTOs
-public sealed record SignupRequest(string Email, string Password);
-public sealed record VerifyEmailRequest(string Email, string Code);
-public sealed record SignInRequest(string Email, string Password);
+public sealed record MagicLinkRequest(string Email);
+public sealed record VerifyMagicLinkRequest(string Email, string Token);
 public sealed record GoogleOAuthRequest(string Code);
 public sealed record RefreshTokenRequest(string RefreshToken);
 public sealed record SelectRoleRequest(string Role);

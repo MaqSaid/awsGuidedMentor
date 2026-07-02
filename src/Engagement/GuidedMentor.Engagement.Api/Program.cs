@@ -45,18 +45,12 @@ builder.Services.AddEngagementHelpAssistant(builder.Configuration);
 // Register AWS AppConfig feature flags
 builder.Services.AddFeatureFlags(builder.Configuration);
 
-// Register Analytics handlers
-builder.Services.AddSingleton<IEngagementEventRepository, DynamoDbEngagementEventRepository>();
-builder.Services.AddSingleton<IConsentRepository, DynamoDbConsentRepository>();
+// Register Analytics handlers (PostgreSQL-backed via DI in AddEngagementInfrastructure)
 builder.Services.AddSingleton<IngestEventsHandler>();
 builder.Services.AddSingleton<UpdateConsentHandler>();
 
-// Register health checks for Engagement service dependencies (DynamoDB + Bedrock + Aurora)
-builder.Services.AddHealthChecks()
-    .AddDynamoDbCheck("Notifications", name: "dynamodb-notifications")
-    .AddDynamoDbCheck("EngagementEvents", name: "dynamodb-engagement-events")
-    .AddBedrockCheck()
-    .AddAuroraCheck();
+// Register health checks for Engagement service dependencies
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "faq-001",
+    "keywords": ["reset password", "forgot password", "change password", "password reset"],
+    "question": "How do I reset my password?",
+    "answer": "To reset your password, click 'Forgot password?' on the login page. You'll receive a verification code at your registered email address. Enter the code and create a new password (minimum 8 characters with uppercase, lowercase, number, and special character)."
+  },
+  {
+    "id": "faq-002",
+    "keywords": ["login", "cant login", "sign in", "login problem", "access account"],
+    "question": "I can't log in to my account. What should I do?",
+    "answer": "If you're having trouble logging in: 1) Check your email address is correct, 2) Try resetting your password using 'Forgot password?', 3) Clear your browser cache and cookies, 4) Make sure you're using a supported browser (Chrome, Firefox, Safari, Edge). If the issue persists, contact your chapter lead for assistance."
+  },
+  {
+    "id": "faq-003",
+    "keywords": ["matching algorithm", "how matching works", "match score", "compatibility score", "four dimensions"],
+    "question": "How does the matching algorithm work?",
+    "answer": "Our matching algorithm evaluates compatibility across 4 dimensions: Skills alignment, Industry experience, Goals compatibility, and Availability overlap. Each dimension is scored from 0 to 100, and the overall match score is a weighted combination. Higher scores indicate better mentor-mentee fit. You'll see your top matches ranked by this composite score."
+  },
+  {
+    "id": "faq-004",
+    "keywords": ["mentor lock", "locked mentor", "15 minutes", "lock timer", "hold mentor"],
+    "question": "What is the mentor lock mechanism?",
+    "answer": "When you select a mentor, they are temporarily locked for 15 minutes to give you time to send a connection request without another mentee claiming them. If you don't send a request within 15 minutes, the lock expires and the mentor becomes available to others again. You'll see a countdown timer showing the remaining lock time."
+  },
+  {
+    "id": "faq-005",
+    "keywords": ["role toggle", "switch role", "become mentor", "become mentee", "change role"],
+    "question": "Can I switch between being a mentor and a mentee?",
+    "answer": "Yes! Use the role toggle in your dashboard header to switch between Mentor and Mentee modes. You can be both simultaneously — mentoring someone in your area of expertise while being mentored in another area. Your profile, matches, and dashboard update based on your active role."
+  },
+  {
+    "id": "faq-006",
+    "keywords": ["session plan", "ai session plan", "generate plan", "35 minute", "agenda", "session agenda"],
+    "question": "How does AI session plan generation work?",
+    "answer": "When you have an upcoming session, click 'Generate Session Plan' to create an AI-powered 35-minute agenda tailored to your mentoring goals. The plan includes structured discussion topics, time allocations, and suggested activities. You can regenerate or customise the plan before your session. Both mentor and mentee can view the plan."
+  },
+  {
+    "id": "faq-007",
+    "keywords": ["complete session", "mark complete", "completion flow", "confirm session", "session done"],
+    "question": "How do I complete a mentoring session?",
+    "answer": "Session completion follows a two-step flow: First, the mentee marks the session as complete and can leave optional feedback. Then, the mentor confirms the completion. Both parties must action this for the session to be recorded as completed. This ensures mutual agreement that the session goals were addressed."
+  },
+  {
+    "id": "faq-008",
+    "keywords": ["availability", "set available", "unavailable", "mentor availability", "toggle availability"],
+    "question": "How do I manage my mentor availability?",
+    "answer": "As a mentor, you can toggle your availability on or off from your Mentor Dashboard. When unavailable, you won't appear in mentee search results or receive new connection requests. Your existing mentoring relationships are unaffected. Toggle it back on when you're ready to accept new mentees."
+  },
+  {
+    "id": "faq-009",
+    "keywords": ["notification", "notifications", "bell icon", "real-time", "alerts"],
+    "question": "How do notifications work?",
+    "answer": "GuidedMentor sends real-time notifications for important events: new match requests, session reminders, messages, and completion confirmations. Look for the bell icon in the top navigation bar — a badge shows your unread count. Click it to view all notifications. You can mark individual notifications or all as read."
+  },
+  {
+    "id": "faq-010",
+    "keywords": ["chapter", "australian chapter", "cross-city", "different city", "interstate"],
+    "question": "Can I be matched with someone in a different city?",
+    "answer": "Yes! GuidedMentor supports cross-city matching across all Australian chapters (Sydney, Melbourne, Brisbane, Perth, Adelaide, Canberra, Hobart, Darwin). While you're primarily associated with your local chapter, the matching algorithm can pair you with mentors or mentees in other cities. Sessions can be conducted virtually regardless of location."
+  },
+  {
+    "id": "faq-011",
+    "keywords": ["opportunities board", "jobs", "events", "workshops", "opportunities"],
+    "question": "What is the Opportunities Board?",
+    "answer": "The Opportunities Board is a curated feed of professional development opportunities including job postings, networking events, workshops, and training programs relevant to your profile and interests. Browse by category or let the system recommend opportunities based on your mentoring goals and skills."
+  },
+  {
+    "id": "faq-012",
+    "keywords": ["meetup calendar", "meetup", "chapter meetup", "in-person", "events calendar"],
+    "question": "How does the Meetup Calendar work?",
+    "answer": "The Meetup Calendar shows upcoming in-person and virtual meetup events for your chapter. Chapter leads create events with venue details and timing. You can confirm your attendance, align your mentoring sessions to coincide with meetups, and view who else is attending. Events appear on your dashboard with date, time, and location."
+  },
+  {
+    "id": "faq-013",
+    "keywords": ["onboarding", "get started", "setup", "first steps", "new user", "mentee steps", "mentor steps"],
+    "question": "What are the onboarding steps?",
+    "answer": "For mentees, onboarding has 4 steps: 1) Complete your profile with skills and goals, 2) Set your preferences and availability, 3) Browse and select a mentor match, 4) Send your first connection request. For mentors, it's 3 steps: 1) Complete your profile with expertise areas, 2) Set your availability and max mentees, 3) Wait for mentee requests or browse available mentees."
+  },
+  {
+    "id": "faq-014",
+    "keywords": ["settings", "profile", "update profile", "edit profile", "change settings"],
+    "question": "How do I update my profile and settings?",
+    "answer": "Navigate to Settings from the sidebar menu or user avatar dropdown. You can update your personal information, skills, goals, industry, availability preferences, notification settings, and privacy options. Changes to your profile may affect your match scores with existing and potential connections."
+  },
+  {
+    "id": "faq-015",
+    "keywords": ["privacy", "data privacy", "analytics consent", "tracking", "data collection", "opt out"],
+    "question": "How is my data used and can I control analytics?",
+    "answer": "GuidedMentor collects usage analytics to improve the platform experience. You have full control over this: go to Settings > Privacy to opt in or out of analytics tracking at any time. Your personal mentoring conversations are never used for analytics. We comply with Australian Privacy Principles and your data is stored securely in AWS Sydney region."
+  },
+  {
+    "id": "faq-016",
+    "keywords": ["keyboard shortcut", "shortcuts", "ctrl h", "hotkey", "keyboard"],
+    "question": "Are there keyboard shortcuts available?",
+    "answer": "Yes! Press Ctrl+H (or Cmd+H on Mac) to open the AI Help Assistant from anywhere in the app. Other shortcuts include: Ctrl+K for quick search, Escape to close modals and panels, and Tab/Shift+Tab to navigate between interactive elements. The platform is fully keyboard-accessible for screen reader users."
+  },
+  {
+    "id": "faq-017",
+    "keywords": ["max mentees", "mentee limit", "how many mentees", "mentee cap"],
+    "question": "Is there a limit on how many mentees I can have?",
+    "answer": "Yes, as a mentor you can set your maximum number of active mentees in your Settings. This helps ensure you can dedicate quality time to each relationship. You can adjust this number up or down at any time. When you've reached your limit, new mentees won't be able to send you connection requests until a slot opens."
+  },
+  {
+    "id": "faq-018",
+    "keywords": ["end relationship", "disconnect", "stop mentoring", "leave mentor", "cancel match"],
+    "question": "How do I end a mentoring relationship?",
+    "answer": "Either the mentor or mentee can end the relationship from the active session view. Navigate to your connection, click the options menu, and select 'End Relationship'. You'll be asked to provide optional feedback. Both parties are notified. Your session history and completed plans are preserved for reference."
+  }
+]

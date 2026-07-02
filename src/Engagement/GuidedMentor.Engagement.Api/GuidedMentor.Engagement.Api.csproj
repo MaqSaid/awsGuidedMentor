@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <RootNamespace>GuidedMentor.Engagement.Api</RootNamespace>
-    <PublishAot>true</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>

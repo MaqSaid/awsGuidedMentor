@@ -30,6 +30,24 @@ jobs:
       contents: read
       pull-requests: write
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: guidedmentor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=guidedmentor_test;Username=test;Password=test"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,11 +57,19 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Initialize test database
+        run: psql -h localhost -U test -d guidedmentor_test -f scripts/init-db.sql
+        env:
+          PGPASSWORD: test
+
       - name: Restore dependencies
         run: dotnet restore GuidedMentor.sln
 
       - name: Build solution
         run: dotnet build GuidedMentor.sln --configuration Release --no-restore
+
+      - name: Verify code formatting
+        run: dotnet format GuidedMentor.sln --verify-no-changes --severity warn
 
       - name: Run xUnit tests
         run: |

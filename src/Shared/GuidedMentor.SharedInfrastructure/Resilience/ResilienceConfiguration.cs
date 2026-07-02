@@ -1,4 +1,3 @@
-using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using Polly.CircuitBreaker;
@@ -8,7 +7,7 @@ using Polly.Timeout;
 namespace GuidedMentor.SharedInfrastructure.Resilience;
 
 /// <summary>
-/// Configures Polly v8 resilience pipelines for external dependencies (Bedrock, DynamoDB, Aurora).
+/// Configures Polly v8 resilience pipelines for external dependencies (PostgreSQL, external APIs).
 /// </summary>
 public static class ResilienceConfiguration
 {
@@ -17,18 +16,18 @@ public static class ResilienceConfiguration
     /// </summary>
     public static IServiceCollection AddGuidedMentorResilience(this IServiceCollection services)
     {
-        services.AddResiliencePipeline(ResiliencePipelineNames.Bedrock, ConfigureBedrockPipeline);
-        services.AddResiliencePipeline(ResiliencePipelineNames.DynamoDb, ConfigureDynamoDbPipeline);
-        services.AddResiliencePipeline(ResiliencePipelineNames.Aurora, ConfigureAuroraPipeline);
+        services.AddResiliencePipeline(ResiliencePipelineNames.Bedrock, ConfigureExternalApiPipeline);
+        services.AddResiliencePipeline(ResiliencePipelineNames.DynamoDb, ConfigurePostgresPipeline);
+        services.AddResiliencePipeline(ResiliencePipelineNames.Aurora, ConfigurePostgresPipeline);
 
         return services;
     }
 
     /// <summary>
-    /// Bedrock pipeline: 30s timeout → retry 3x (2s, 4s, 8s exponential + jitter)
+    /// External API pipeline: 30s timeout → retry 3x (2s, 4s, 8s exponential + jitter)
     /// → circuit breaker (50% fail ratio, 30s sample, 5 min throughput, 60s break).
     /// </summary>
-    private static void ConfigureBedrockPipeline(ResiliencePipelineBuilder builder)
+    private static void ConfigureExternalApiPipeline(ResiliencePipelineBuilder builder)
     {
         builder
             .AddTimeout(new TimeoutStrategyOptions
@@ -52,32 +51,9 @@ public static class ResilienceConfiguration
     }
 
     /// <summary>
-    /// DynamoDB pipeline: 5s timeout → retry 3x (200ms exponential + jitter),
-    /// handles ProvisionedThroughputExceededException and InternalServerErrorException.
+    /// PostgreSQL pipeline: 10s timeout → retry 3x (500ms exponential + jitter).
     /// </summary>
-    private static void ConfigureDynamoDbPipeline(ResiliencePipelineBuilder builder)
-    {
-        builder
-            .AddTimeout(new TimeoutStrategyOptions
-            {
-                Timeout = TimeSpan.FromSeconds(5),
-            })
-            .AddRetry(new RetryStrategyOptions
-            {
-                MaxRetryAttempts = 3,
-                BackoffType = DelayBackoffType.Exponential,
-                Delay = TimeSpan.FromMilliseconds(200),
-                UseJitter = true,
-                ShouldHandle = new PredicateBuilder()
-                    .Handle<ProvisionedThroughputExceededException>()
-                    .Handle<InternalServerErrorException>(),
-            });
-    }
-
-    /// <summary>
-    /// Aurora pipeline: 10s timeout → retry 3x (500ms exponential + jitter).
-    /// </summary>
-    private static void ConfigureAuroraPipeline(ResiliencePipelineBuilder builder)
+    private static void ConfigurePostgresPipeline(ResiliencePipelineBuilder builder)
     {
         builder
             .AddTimeout(new TimeoutStrategyOptions

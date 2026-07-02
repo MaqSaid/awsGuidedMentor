@@ -120,3 +120,73 @@ dotnet_naming_symbols.async_method_symbols.required_modifiers = async
 
 dotnet_naming_style.ends_with_async.required_suffix = Async
 dotnet_naming_style.ends_with_async.capitalization = pascal_case
+
+# =============================================================================
+# .NET Static Analysis - Security & Reliability Rules
+# =============================================================================
+
+# Security (CA5xxx) - treat as errors to block builds
+dotnet_diagnostic.CA2100.severity = error   # SQL injection
+dotnet_diagnostic.CA2255.severity = error   # ModuleInitializer
+dotnet_diagnostic.CA5350.severity = error   # Weak crypto
+dotnet_diagnostic.CA5351.severity = error   # Broken crypto
+dotnet_diagnostic.CA5359.severity = error   # Disable cert validation
+dotnet_diagnostic.CA5360.severity = error   # Dangerous deserialization
+dotnet_diagnostic.CA5361.severity = error   # Dangerous SChannel
+dotnet_diagnostic.CA5362.severity = error   # Potential reference cycle
+dotnet_diagnostic.CA5363.severity = error   # Disable request validation
+dotnet_diagnostic.CA5364.severity = error   # Use deprecated security protocols
+dotnet_diagnostic.CA5365.severity = error   # Disable HTTP header checking
+dotnet_diagnostic.CA5366.severity = error   # Use XmlReader for DataSet
+dotnet_diagnostic.CA5367.severity = error   # Serialize with pointer fields
+dotnet_diagnostic.CA5368.severity = error   # Set ViewStateUserKey
+dotnet_diagnostic.CA5369.severity = error   # Use XmlReader for deserialize
+dotnet_diagnostic.CA5370.severity = error   # Use XmlReader for validating reader
+dotnet_diagnostic.CA5371.severity = error   # Use XmlReader for schema read
+dotnet_diagnostic.CA5372.severity = error   # Use XmlReader for XPathDocument
+dotnet_diagnostic.CA5373.severity = error   # Obsolete key derivation function
+dotnet_diagnostic.CA5374.severity = error   # Do not use XslTransform
+dotnet_diagnostic.CA5375.severity = error   # Do not use account SAS
+dotnet_diagnostic.CA5376.severity = error   # Use SharedAccessProtocol HttpsOnly
+dotnet_diagnostic.CA5377.severity = error   # Use container level access policy
+dotnet_diagnostic.CA5378.severity = error   # Do not disable ServicePointManagerSecurityProtocols
+dotnet_diagnostic.CA5379.severity = error   # Weak key derivation function
+dotnet_diagnostic.CA5380.severity = error   # Do not add certs to root store
+dotnet_diagnostic.CA5381.severity = error   # Ensure certs are not added to root store
+dotnet_diagnostic.CA5384.severity = error   # Do not use DSA
+dotnet_diagnostic.CA5385.severity = error   # Use RSA with sufficient key size
+dotnet_diagnostic.CA5397.severity = error   # Do not use deprecated SslProtocols
+
+# Reliability
+dotnet_diagnostic.CA2007.severity = warning # ConfigureAwait
+dotnet_diagnostic.CA2016.severity = warning # Forward CancellationToken
+
+# Design
+dotnet_diagnostic.CA1062.severity = warning # Validate arguments
+dotnet_diagnostic.CA1063.severity = warning # Implement IDisposable correctly
+
+
+# =============================================================================
+# Meziantou.Analyzer — downgrade all to suggestion (not errors)
+# These are code quality suggestions, not correctness issues.
+# =============================================================================
+dotnet_diagnostic.MA0002.severity = suggestion
+dotnet_diagnostic.MA0004.severity = suggestion
+dotnet_diagnostic.MA0006.severity = suggestion
+dotnet_diagnostic.MA0009.severity = suggestion
+dotnet_diagnostic.MA0011.severity = suggestion
+dotnet_diagnostic.MA0016.severity = suggestion
+dotnet_diagnostic.MA0047.severity = suggestion
+dotnet_diagnostic.MA0048.severity = suggestion
+dotnet_diagnostic.MA0049.severity = suggestion
+dotnet_diagnostic.MA0051.severity = suggestion
+dotnet_diagnostic.MA0074.severity = suggestion
+dotnet_diagnostic.MA0158.severity = suggestion
+
+# =============================================================================
+# Microsoft.CodeAnalysis.NetAnalyzers — downgrade noisy rules to suggestion
+# =============================================================================
+dotnet_diagnostic.CA1305.severity = suggestion
+dotnet_diagnostic.CA1310.severity = suggestion
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1873.severity = suggestion

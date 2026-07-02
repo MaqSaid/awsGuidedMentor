@@ -149,7 +149,7 @@ export function AIHelpAssistant() {
         data-testid="engagement-ai-help-assistant"
         onClick={() => setIsOpen(true)}
         aria-label="Open AI Help Assistant (Ctrl+H)"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-[#0a1628] shadow-lg hover:shadow-glow-orange transition-shadow flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 min-w-[44px] min-h-[44px] rounded-full bg-primary text-[#0a1628] shadow-lg hover:shadow-glow-orange transition-shadow flex items-center justify-center"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -165,7 +165,7 @@ export function AIHelpAssistant() {
       role="dialog"
       aria-label="AI Help Assistant"
       aria-describedby="ai-help-description"
-      className="fixed bottom-6 right-6 z-50 w-96 h-[32rem] flex flex-col glass-card rounded-lg shadow-2xl overflow-hidden"
+      className="fixed z-50 inset-0 md:inset-auto md:bottom-6 md:right-6 md:w-96 md:h-[32rem] flex flex-col glass-card rounded-none md:rounded-lg shadow-2xl overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-[rgba(255,255,255,0.1)]">
@@ -176,7 +176,7 @@ export function AIHelpAssistant() {
         <button
           onClick={() => setIsOpen(false)}
           aria-label="Close AI Help Assistant"
-          className="p-1 rounded-sm text-text-muted hover:text-text-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary outline-none"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm text-text-muted hover:text-text-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary outline-none"
         >
           <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -228,7 +228,7 @@ export function AIHelpAssistant() {
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-[rgba(255,255,255,0.1)]">
+      <div className="p-3 border-t border-[rgba(255,255,255,0.1)] safe-bottom">
         <div className="flex gap-2">
           <textarea
             ref={inputRef}

@@ -183,11 +183,10 @@ resource "aws_cognito_user_pool_client" "web" {
   callback_urls                        = var.callback_urls
   logout_urls                          = var.logout_urls
 
-  # Explicit auth flows for email/password
+  # Explicit auth flows for magic link (custom auth) and token refresh
   explicit_auth_flows = [
     "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_USER_SRP_AUTH",
-    "ALLOW_USER_PASSWORD_AUTH"
+    "ALLOW_CUSTOM_AUTH"
   ]
 
   # Prevent user existence errors (security: generic error messages)

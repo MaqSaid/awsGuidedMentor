@@ -4,13 +4,11 @@ using GuidedMentor.SharedKernel;
 namespace GuidedMentor.Identity.Domain.Entities;
 
 /// <summary>
-/// User aggregate root. Manages authentication state, role selection, and onboarding progress.
+/// User aggregate root. Manages role selection, onboarding progress, and profile state.
+/// Authentication is handled externally via Cognito (magic link + Google OAuth).
 /// </summary>
 public sealed class User : AggregateRoot<UserId>
 {
-    private const int MaxFailedAttempts = 5;
-    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(30);
-
     public Email Email { get; private set; } = null!;
     public Role? ActiveRole { get; private set; }
     public string DisplayName { get; private set; } = string.Empty;
@@ -19,16 +17,9 @@ public sealed class User : AggregateRoot<UserId>
     public string City { get; private set; } = string.Empty;
     public OnboardingStatus MentorOnboardingStatus { get; private set; } = OnboardingStatus.NotStarted;
     public OnboardingStatus MenteeOnboardingStatus { get; private set; } = OnboardingStatus.NotStarted;
-    public int FailedLoginAttempts { get; private set; }
-    public DateTime? LockedUntil { get; private set; }
     public bool IsDisabled { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
-
-    /// <summary>
-    /// Computed property: the account is locked if LockedUntil is set and in the future.
-    /// </summary>
-    public bool IsLocked => LockedUntil is not null && LockedUntil > DateTime.UtcNow;
 
     /// <summary>
     /// Computed property: the account cannot be used if disabled by an admin.
@@ -61,8 +52,6 @@ public sealed class User : AggregateRoot<UserId>
             ActiveRole = null,
             MentorOnboardingStatus = OnboardingStatus.NotStarted,
             MenteeOnboardingStatus = OnboardingStatus.NotStarted,
-            FailedLoginAttempts = 0,
-            LockedUntil = null,
             IsDisabled = false,
             CreatedAt = now,
             UpdatedAt = now
@@ -98,32 +87,6 @@ public sealed class User : AggregateRoot<UserId>
         RaiseDomainEvent(new RoleToggledEvent(Id, previousRole, ActiveRole.Value, DateTime.UtcNow));
 
         return Result.Success();
-    }
-
-    /// <summary>
-    /// Increments the failed login attempt counter.
-    /// Locks the account for 30 minutes if the counter reaches 5.
-    /// </summary>
-    public void IncrementFailedAttempts()
-    {
-        FailedLoginAttempts++;
-        UpdatedAt = DateTime.UtcNow;
-
-        if (FailedLoginAttempts >= MaxFailedAttempts)
-        {
-            LockedUntil = DateTime.UtcNow.Add(LockoutDuration);
-            RaiseDomainEvent(new AccountLockedEvent(Id, LockedUntil.Value, DateTime.UtcNow));
-        }
-    }
-
-    /// <summary>
-    /// Resets the failed login attempt counter and clears any lockout on successful login.
-    /// </summary>
-    public void ResetFailedAttempts()
-    {
-        FailedLoginAttempts = 0;
-        LockedUntil = null;
-        UpdatedAt = DateTime.UtcNow;
     }
 
     /// <summary>

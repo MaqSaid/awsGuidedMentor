@@ -18,6 +18,7 @@ export function BrowsePage() {
   const [filters, setFilters] = useState<BrowseFilters>({});
   const [activeLock, setActiveLock] = useState<LockResult | null>(null);
   const [lockedMentorName, setLockedMentorName] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const { data, isLoading, isError, refetch } = useBrowseMentors(page, filters);
@@ -87,8 +88,21 @@ export function BrowsePage() {
   const totalPages = data?.totalPages ?? 1;
 
   return (
-    <div className="max-w-7xl mx-auto p-6" data-testid="mentoring-browse-page">
-      <h1 className="text-2xl font-bold text-text-primary mb-6">Browse Mentors</h1>
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6" data-testid="mentoring-browse-page">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-text-primary">Browse Mentors</h1>
+        {/* Mobile filter button */}
+        <button
+          className="lg:hidden btn-ghost flex items-center gap-2 text-sm"
+          onClick={() => setShowMobileFilters(true)}
+          aria-label="Open filters"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-text-secondary" aria-hidden="true">
+            <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          Filters
+        </button>
+      </div>
 
       <div className="flex gap-6">
         {/* Sidebar filters */}
@@ -198,6 +212,42 @@ export function BrowsePage() {
         confirmLoading={confirmSelection.isPending}
         cancelLoading={releaseLock.isPending}
       />
+
+      {/* Mobile filter drawer */}
+      {showMobileFilters && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowMobileFilters(false)}
+            aria-hidden="true"
+          />
+          <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-y-auto glass-card rounded-t-2xl p-6 safe-bottom animate-[slideUp_200ms_ease-out]">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-text-primary">Filters</h3>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-text-primary"
+                aria-label="Close filters"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <FilterPanel
+              filters={filters}
+              onFiltersChange={setFilters}
+              className="w-full"
+            />
+            <button
+              className="btn-violet w-full mt-4"
+              onClick={() => setShowMobileFilters(false)}
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

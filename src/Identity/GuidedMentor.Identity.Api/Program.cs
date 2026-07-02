@@ -18,10 +18,7 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddFeatureFlags(builder.Configuration);
 
 // Register health checks for Identity service dependencies
-builder.Services.AddHealthChecks()
-    .AddDynamoDbCheck("Users", name: "dynamodb-users")
-    .AddDynamoDbCheck("Mentors", name: "dynamodb-mentors")
-    .AddDynamoDbCheck("Mentees", name: "dynamodb-mentees");
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

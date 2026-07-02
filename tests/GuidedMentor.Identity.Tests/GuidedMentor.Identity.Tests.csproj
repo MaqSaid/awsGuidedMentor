@@ -18,6 +18,8 @@
     <PackageReference Include="FsCheck.Xunit" Version="3.*" />
     <PackageReference Include="FluentAssertions" Version="8.*" />
     <PackageReference Include="Bogus" Version="35.*" />
+    <PackageReference Include="NSubstitute" Version="5.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
   </ItemGroup>
 
   <ItemGroup>

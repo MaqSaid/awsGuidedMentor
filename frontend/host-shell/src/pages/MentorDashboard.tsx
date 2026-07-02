@@ -23,9 +23,9 @@ interface MentorDashData {
 
 const MenteeCard = memo(function MenteeCard({ mentee }: { mentee: MenteeCardData }) {
   return (
-    <div className="glass-card p-6 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-violet/20 border-2 border-violet/40 flex items-center justify-center text-lg font-bold text-violet-light">
+    <div className="glass-card p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center gap-3 md:gap-4">
+        <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-violet/20 border-2 border-violet/40 flex items-center justify-center text-base md:text-lg font-bold text-violet-light shrink-0">
           {mentee.initials}
         </div>
         <div>
@@ -90,13 +90,13 @@ export default function MentorDashboard() {
   }
 
   return (
-    <section className="max-w-5xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold mb-8" style={{ fontFamily: 'Outfit, sans-serif' }}>
+    <section className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
+      <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8" style={{ fontFamily: 'Outfit, sans-serif' }}>
         Welcome back, Marcus 👋
       </h1>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 md:mb-10">
         <div className="glass-card p-5">
           <p className="text-sm text-text-secondary mb-1">Mentees</p>
           <p className="text-2xl font-bold text-text-primary">{data.menteeCount}</p>

@@ -1,19 +1,21 @@
-using Amazon.BedrockRuntime;
-using Amazon.DynamoDBv2;
 using GuidedMentor.Engagement.Application.Interfaces;
+using GuidedMentor.Engagement.Application.Services;
 using GuidedMentor.Engagement.Domain.Repositories;
-using GuidedMentor.Engagement.Infrastructure.AI;
 using GuidedMentor.Engagement.Infrastructure.Persistence;
 using GuidedMentor.Engagement.Infrastructure.RealTime;
+using GuidedMentor.Engagement.Infrastructure.Repositories;
+using GuidedMentor.Engagement.Infrastructure.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace GuidedMentor.Engagement.Infrastructure;
 
 /// <summary>
 /// Registers Engagement infrastructure services into the DI container.
+/// Refactored: DynamoDB → PostgreSQL, AppSync → SignalR (placeholder), Bedrock removed.
 /// </summary>
 public static class DependencyInjection
 {
@@ -21,47 +23,34 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // DynamoDB client (shared)
-        services.AddSingleton<IAmazonDynamoDB, AmazonDynamoDBClient>();
-
-        // Bedrock Runtime client for AI Help Assistant
-        services.AddSingleton<IAmazonBedrockRuntime, AmazonBedrockRuntimeClient>();
-
-        // IChatClient abstraction backed by Bedrock Converse API (Claude Sonnet 4)
-        services.AddScoped<IChatClient, BedrockChatClient>();
-
-        // Table options
-        services.Configure<NotificationTableOptions>(
-            configuration.GetSection(NotificationTableOptions.SectionName));
-
-        // AppSync options
-        services.Configure<AppSyncOptions>(
-            configuration.GetSection(AppSyncOptions.SectionName));
-
-        // Aurora PostgreSQL options
-        services.Configure<AuroraOptions>(
-            configuration.GetSection(AuroraOptions.SectionName));
-
-        // NpgsqlDataSource for Aurora PostgreSQL analytics database (via RDS Proxy)
-        var auroraConnectionString = configuration.GetSection(AuroraOptions.SectionName)
-            .GetValue<string>(nameof(AuroraOptions.ConnectionString)) ?? string.Empty;
-        if (!string.IsNullOrEmpty(auroraConnectionString))
+        // PostgreSQL analytics — uses same connection as main DB now
+        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+        if (!string.IsNullOrEmpty(connectionString))
         {
-            services.AddSingleton(NpgsqlDataSource.Create(auroraConnectionString));
+            services.AddSingleton(NpgsqlDataSource.Create(connectionString));
             services.AddScoped<IAnalyticsRepository, AuroraAnalyticsRepository>();
         }
 
-        // Repositories
-        services.AddScoped<INotificationRepository, DynamoDbNotificationRepository>();
+        // Repositories (PostgreSQL-backed)
+        services.AddScoped<INotificationRepository, PostgresNotificationRepository>();
+        services.AddScoped<IConsentRepository, PostgresConsentRepository>();
+        services.AddScoped<IEngagementEventRepository, PostgresEngagementEventRepository>();
 
-        // DynamoDB Streams → Aurora replication handler
-        services.AddScoped<DynamoDbStreamReplicationHandler>();
+        // Real-time notification publisher (no-op placeholder, will become SignalR)
+        services.AddScoped<IAppSyncNotificationPublisher, NoOpNotificationPublisher>();
 
-        // AppSync notification publisher (real-time push)
-        services.AddHttpClient<IAppSyncNotificationPublisher, AppSyncNotificationPublisher>();
+        // HuggingFace options (kept for interface compat — mock in local dev)
+        services.Configure<HuggingFaceOptions>(
+            configuration.GetSection(HuggingFaceOptions.SectionName));
 
-        // AppSync subscription client (WebSocket with exponential backoff reconnection)
-        services.AddSingleton<AppSyncSubscriptionClient>();
+        // Intent classifier — will be overridden by mock in local dev
+        services.AddHttpClient<IIntentClassifier, HuggingFaceIntentClassifier>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<HuggingFaceOptions>>().Value;
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
 
         return services;
     }

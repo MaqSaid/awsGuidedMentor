@@ -45,8 +45,8 @@ export default function MenteeDashboard() {
   }
 
   return (
-    <section className="max-w-5xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold mb-8" style={{ fontFamily: 'Outfit, sans-serif' }}>
+    <section className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
+      <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8" style={{ fontFamily: 'Outfit, sans-serif' }}>
         Welcome back, James 👋
       </h1>
 
@@ -82,11 +82,11 @@ export default function MenteeDashboard() {
           {data.sessions.map((session) => (
             <div
               key={session.sessionId}
-              className="glass-card p-5 flex items-center justify-between"
+              className="glass-card p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               onMouseEnter={() => prefetch(`/v1/sessions/${session.sessionId}/plan`)}
               onMouseLeave={cancelPrefetch}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 rounded-full bg-bg-secondary border border-border flex items-center justify-center text-sm font-semibold">
                   {session.mentor.initials}
                 </div>

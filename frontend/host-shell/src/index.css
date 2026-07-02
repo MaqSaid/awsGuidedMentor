@@ -104,6 +104,39 @@ h1, h2, h3, h4 {
 }
 
 
+/* Prevent horizontal overflow on mobile */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Safe area insets for notched phones */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Mobile-first touch targets */
+@media (max-width: 767px) {
+  .btn-violet,
+  .btn-mint,
+  .btn-ghost {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 14px 24px;
+  }
+}
+
+/* Mobile slide-in animation for nav menu */
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Mobile slide-up animation for filter drawer */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 /* View Transitions API — smooth route changes */
 ::view-transition-old(root) {
   animation: fade-out 200ms ease-out;

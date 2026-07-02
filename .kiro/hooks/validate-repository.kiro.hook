@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Repository Convention Check",
+  "description": "Validates new repository implementations follow PostgreSQL/EF Core conventions: interface in Application layer, implementation in Infrastructure, uses GuidedMentorDbContext, returns domain entities",
+  "version": "1",
+  "when": {
+    "type": "preToolUse",
+    "toolTypes": [
+      "write"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "ONLY if the file being written contains 'Repository' in the path or filename AND has a .cs extension, verify: 1) If it's an interface (I{Name}Repository), it must be in an Application layer project path. 2) If it's an implementation (Postgres{Name}Repository), it must be in an Infrastructure layer project path. 3) Implementation must inject GuidedMentorDbContext. 4) Public methods must return domain entities (not EF entities). 5) Class must be sealed. 6) Must use file-scoped namespace. If the file does NOT match these criteria, SKIP all checks and allow the write to proceed without comment."
+  }
+}

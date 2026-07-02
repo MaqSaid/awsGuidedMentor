@@ -55,9 +55,9 @@ export default function SessionPlan() {
   }
 
   return (
-    <section className="max-w-4xl mx-auto px-6 py-10">
+    <section className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-10">
       {/* Header: Mentee — Score — Mentor */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-6">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 mb-6">
         {/* Mentee card */}
         <div className="glass-card p-4 flex items-center gap-3 flex-1">
           <div className="w-12 h-12 rounded-full bg-mint/20 border-2 border-mint/40 flex items-center justify-center text-sm font-bold text-mint">
@@ -114,11 +114,11 @@ export default function SessionPlan() {
         </h2>
         <div className="space-y-3">
           {data.agenda.map((item, i) => (
-            <div key={i} className="glass-card p-4 flex gap-4">
-              <div className="shrink-0 w-24 text-sm text-text-muted font-mono">
+            <div key={i} className="glass-card p-4 flex flex-col sm:flex-row gap-2 sm:gap-4">
+              <div className="shrink-0 sm:w-24 text-sm text-text-muted font-mono">
                 {item.timeRange}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeBadgeStyles[item.type] ?? ''}`}>
                     {item.type}

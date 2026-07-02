@@ -8,7 +8,7 @@ export default function LandingPage() {
       <div className="absolute bottom-20 right-1/4 w-80 h-80 rounded-full bg-mint/20 blur-[128px] pointer-events-none" />
 
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-5 relative z-10">
+      <header className="flex items-center justify-between px-4 md:px-6 py-5 relative z-10">
         <div className="text-xl font-bold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
           <span className="text-text-primary">Guided</span>
           <span className="gradient-text">Mentor</span>
@@ -19,12 +19,12 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <main className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-20 pb-32">
-        <h1 className="text-5xl md:text-6xl font-extrabold leading-tight max-w-3xl" style={{ fontFamily: 'Outfit, sans-serif' }}>
+      <main className="relative z-10 flex flex-col items-center justify-center text-center px-4 md:px-6 pt-12 md:pt-20 pb-20 md:pb-32">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight max-w-3xl" style={{ fontFamily: 'Outfit, sans-serif' }}>
           Find Your Perfect Mentor.{' '}
           <span className="gradient-text">Powered</span> by AI.
         </h1>
-        <p className="mt-6 text-lg text-text-secondary max-w-xl">
+        <p className="mt-4 md:mt-6 text-base md:text-lg text-text-secondary max-w-xl">
           AI-driven matching connects you with the right mentor based on your goals,
           skills, and learning style. Personalized session plans generated in seconds.
         </p>
@@ -40,8 +40,8 @@ export default function LandingPage() {
         </div>
 
         {/* Feature cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 max-w-4xl w-full" aria-label="Key features">
-          <article className="glass-card p-6 text-left transition-all duration-200">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-16 md:mt-24 max-w-4xl w-full" aria-label="Key features">
+          <article className="glass-card p-5 md:p-6 text-left transition-all duration-200">
             <div className="w-10 h-10 rounded-lg bg-violet/20 flex items-center justify-center mb-4">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8L10 2z" stroke="var(--color-violet-light)" strokeWidth="1.5" strokeLinejoin="round" />

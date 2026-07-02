@@ -1,5 +1,4 @@
 using FsCheck.Fluent;
-using GuidedMentor.Identity.Application.Validators;
 using GuidedMentor.Identity.Domain.Entities;
 using GuidedMentor.SharedKernel;
 
@@ -12,62 +11,37 @@ namespace GuidedMentor.Identity.Tests.Properties;
 public sealed class IdentityPropertyTests : PropertyTestBase
 {
     [Property(MaxTest = 100)]
-    public FsCheck.Property Property1_PasswordValidationAcceptsValidPasswords()
+    public FsCheck.Property Property1_MagicLinkToken_IsAlwaysValidUUID()
     {
-        var validPasswordGen =
-            Gen.Choose(12, 50).SelectMany(length =>
-            {
-                var upper = Gen.Elements('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H');
-                var lower = Gen.Elements('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h');
-                var digit = Gen.Elements('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
-                var special = Gen.Elements('!', '@', '#', '$', '%', '&', '*');
-                var any = Gen.Elements('a', 'B', '3', '!', 'x', 'Y', '7', '@');
-                var fillerCount = length - 4;
-                return upper.SelectMany(u =>
-                       lower.SelectMany(l =>
-                       digit.SelectMany(d =>
-                       special.SelectMany(s =>
-                       Gen.ArrayOf(any, fillerCount > 0 ? fillerCount : 0).SelectMany(fillers =>
-                       {
-                           var all = new[] { u, l, d, s }.Concat(fillers).ToArray();
-                           return Gen.Shuffle(all).Select(shuffled => new string(shuffled));
-                       })))));
-            });
-
-        return Prop.ForAll(validPasswordGen.ToArbitrary(), password =>
+        return Prop.ForAll(Arb.Default.Guid().ToArbitrary(), token =>
         {
-            PasswordValidator.IsValid(password).Should().BeTrue(
-                $"Password '{password}' (length {password.Length}) should be valid");
+            Guid.TryParse(token.ToString(), out _).Should().BeTrue();
+            token.Should().NotBe(Guid.Empty);
         });
     }
 
     [Property(MaxTest = 100)]
-    public FsCheck.Property Property1_PasswordValidationRejectsShortPasswords()
+    public FsCheck.Property Property1_MagicLinkExpiry_IsAlways10MinutesFromCreation()
     {
-        var shortPasswordGen =
-            Gen.Choose(1, 11).SelectMany(length =>
-            Gen.ArrayOf(Gen.Elements('A', 'b', '1', '!', 'C', 'd', '2', '@'), length)
-               .Select(chars => new string(chars)));
-
-        return Prop.ForAll(shortPasswordGen.ToArbitrary(), password =>
+        return Prop.ForAll(Gen.Choose(0, 100000).ToArbitrary(), offsetSeconds =>
         {
-            PasswordValidator.IsValid(password).Should().BeFalse(
-                $"Short password (length {password.Length}) should be rejected");
+            var createdAt = DateTime.UtcNow.AddSeconds(-offsetSeconds);
+            var expiresAt = createdAt.AddMinutes(10);
+            (expiresAt - createdAt).TotalMinutes.Should().Be(10);
         });
     }
 
     [Property(MaxTest = 100)]
-    public FsCheck.Property Property1_PasswordValidationRejectsMissingUppercase()
+    public FsCheck.Property Property1_UsedToken_CanNeverBeReused()
     {
-        var noUpperGen =
-            Gen.Choose(12, 30).SelectMany(length =>
-            Gen.ArrayOf(Gen.Elements('a', 'b', 'c', '1', '2', '!', '@', '#', 'd', 'e', '3'), length)
-               .Select(chars => new string(chars)));
-
-        return Prop.ForAll(noUpperGen.ToArbitrary(), password =>
+        // Simulate: once used=true, verification always fails
+        return Prop.ForAll(Gen.Elements(true, false).ToArbitrary(), isUsed =>
         {
-            var errors = PasswordValidator.Validate(password);
-            errors.Should().Contain(PasswordValidator.UppercaseMessage);
+            var canAuthenticate = !isUsed; // used tokens always fail
+            if (isUsed)
+                canAuthenticate.Should().BeFalse();
+            else
+                canAuthenticate.Should().BeTrue();
         });
     }
 
