@@ -6,10 +6,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\GuidedMentor.SharedInfrastructure\GuidedMentor.SharedInfrastructure.csproj" />
+    <ProjectReference Include="..\GuidedMentor.Identity.Application\GuidedMentor.Identity.Application.csproj" />
+    <ProjectReference Include="..\GuidedMentor.Identity.Domain\GuidedMentor.Identity.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GuidedMentor.Identity.Application\GuidedMentor.Identity.Application.csproj" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.3.0" />
   </ItemGroup>
 
 </Project>

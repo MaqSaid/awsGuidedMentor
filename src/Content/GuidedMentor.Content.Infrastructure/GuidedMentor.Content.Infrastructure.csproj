@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GuidedMentor.Content.Application\GuidedMentor.Content.Application.csproj" />
+    <ProjectReference Include="..\..\Shared\GuidedMentor.SharedInfrastructure\GuidedMentor.SharedInfrastructure.csproj" />
   </ItemGroup>
 
 </Project>

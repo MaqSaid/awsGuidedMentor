@@ -1,6 +1,14 @@
 using System.Text.Json.Serialization;
+using GuidedMentor.Content.Application.Interfaces;
+using GuidedMentor.Content.Infrastructure.Repositories;
 using GuidedMentor.Identity.Api.Endpoints;
+using GuidedMentor.Identity.Application.Interfaces;
+using GuidedMentor.Identity.Infrastructure.Auth;
+using GuidedMentor.Identity.Infrastructure.Repositories;
 using GuidedMentor.Mentoring.Api.Endpoints;
+using GuidedMentor.Mentoring.Application.Interfaces;
+using GuidedMentor.Mentoring.Domain.Repositories;
+using GuidedMentor.Mentoring.Infrastructure.Repositories;
 using GuidedMentor.Engagement.Application;
 using GuidedMentor.Engagement.Application.Services;
 using GuidedMentor.LocalDev.Mocks;
@@ -8,6 +16,10 @@ using GuidedMentor.SharedInfrastructure.Data;
 using GuidedMentor.SharedInfrastructure.Email;
 using GuidedMentor.SharedInfrastructure.FeatureFlags;
 using GuidedMentor.SharedInfrastructure.HealthChecks;
+using GuidedMentor.SharedInfrastructure.Hubs;
+using GuidedMentor.SharedInfrastructure.Jobs;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Scalar.AspNetCore;
@@ -33,6 +45,33 @@ builder.Services.AddDbContext<GuidedMentorDbContext>(options =>
 // Gmail SMTP email sender (replaces SES)
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddSingleton<IEmailSender, GmailSmtpEmailSender>();
+
+// JWT token generation (self-hosted, replaces Cognito)
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.AddSingleton<JwtTokenService>();
+
+// Identity repositories
+builder.Services.AddScoped<PostgresUserRepository>();
+builder.Services.AddScoped<GuidedMentor.Identity.Domain.Repositories.IUserRepository>(sp => sp.GetRequiredService<PostgresUserRepository>());
+builder.Services.AddScoped<GuidedMentor.Identity.Application.Interfaces.IUserRepository>(sp => sp.GetRequiredService<PostgresUserRepository>());
+builder.Services.AddScoped<IMagicLinkService, PostgresMagicLinkService>();
+
+// Mentoring repositories
+builder.Services.AddScoped<IMentorRepository, PostgresMentorRepository>();
+builder.Services.AddScoped<IMenteeRepository, PostgresMenteeRepository>();
+builder.Services.AddScoped<ISessionRepository, PostgresSessionRepository>();
+builder.Services.AddScoped<IOpportunityRepository, PostgresOpportunityRepository>();
+
+// Content repositories
+builder.Services.AddScoped<ISessionPlanRepository, PostgresSessionPlanRepository>();
+
+// SignalR for real-time notifications
+builder.Services.AddSignalR();
+
+// Hangfire background jobs
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+builder.Services.AddHangfire(config => config.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString)));
+builder.Services.AddHangfireServer();
 
 // Mock AI client (canned responses — zero tokens consumed)
 builder.Services.AddSingleton<IChatClient, MockChatClient>();
@@ -95,6 +134,13 @@ app.MapScalarApiReference();
 
 // Health check
 app.MapGet("/v1/health", () => Results.Ok(new { status = "healthy", environment = "local-dev" }));
+
+// SignalR notification hub
+app.MapHub<NotificationHub>("/hubs/notifications");
+
+// Hangfire recurring jobs
+RecurringJob.AddOrUpdate<CleanupExpiredTokensJob>("cleanup-tokens", j => j.ExecuteAsync(), "*/5 * * * *");
+RecurringJob.AddOrUpdate<OpportunityExpiryJob>("expire-opportunities", j => j.ExecuteAsync(), "0 0 * * *");
 
 // ========== Map ALL bounded context endpoints ==========
 

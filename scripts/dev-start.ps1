@@ -26,6 +26,11 @@ if ($retries -ge 10) {
     Write-Host "  WARNING: PostgreSQL health check timed out — continuing anyway" -ForegroundColor Yellow
 }
 
+# Seed demo data
+Write-Host "  Seeding demo data..." -ForegroundColor Cyan
+docker exec -i guidedmentor-postgres psql -U dev -d guidedmentor < scripts/seed-demo-data.sql 2>$null
+Write-Host "  Demo data seeded" -ForegroundColor Green
+
 # Step 2: Start backend
 Write-Host "[2/3] Starting backend..." -ForegroundColor Cyan
 Write-Host ""

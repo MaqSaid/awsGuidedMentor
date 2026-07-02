@@ -73,6 +73,8 @@ public sealed class ComplianceTests
             var result = Types.InAssembly(assembly)
                 .That()
                 .HaveNameEndingWith("Validator")
+                .And()
+                .AreClasses()
                 .Should()
                 .BeSealed()
                 .GetResult();

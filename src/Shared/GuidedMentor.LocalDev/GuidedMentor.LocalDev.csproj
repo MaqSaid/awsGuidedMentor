@@ -4,21 +4,25 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>GuidedMentor.LocalDev</RootNamespace>
     <PublishAot>false</PublishAot>
-    <!-- Disable AOT for local dev — faster builds, easier debugging -->
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
-    <!-- Relax strict analyzers for local dev host — this is not production code -->
     <NoWarn>$(NoWarn);CA2007;MA0004;MA0006;MA0047;MA0048;IDE0040</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Identity\GuidedMentor.Identity.Api\GuidedMentor.Identity.Api.csproj" />
+    <ProjectReference Include="..\..\Identity\GuidedMentor.Identity.Infrastructure\GuidedMentor.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Mentoring\GuidedMentor.Mentoring.Api\GuidedMentor.Mentoring.Api.csproj" />
+    <ProjectReference Include="..\..\Mentoring\GuidedMentor.Mentoring.Infrastructure\GuidedMentor.Mentoring.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Content\GuidedMentor.Content.Api\GuidedMentor.Content.Api.csproj" />
+    <ProjectReference Include="..\..\Content\GuidedMentor.Content.Infrastructure\GuidedMentor.Content.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Engagement\GuidedMentor.Engagement.Api\GuidedMentor.Engagement.Api.csproj" />
     <ProjectReference Include="..\GuidedMentor.SharedInfrastructure\GuidedMentor.SharedInfrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Hangfire.Core" Version="1.*" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.*" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.*" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="9.*" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.*" />
   </ItemGroup>

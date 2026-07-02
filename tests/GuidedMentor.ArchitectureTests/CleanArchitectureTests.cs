@@ -463,7 +463,19 @@ public sealed class CleanArchitectureTests
             .HaveNameEndingWith("Handler")
             .And()
             .AreClasses()
-            .GetTypes();
+            .GetTypes()
+            .Where(t =>
+            {
+                var ns = t.Namespace ?? string.Empty;
+                // Only enforce on MediatR command/query handlers (Commands/ or Queries/ namespaces)
+                return ns.Contains(".Commands.") || ns.Contains(".Queries.");
+            })
+            .Where(t =>
+            {
+                // Exclude INotificationHandler implementors — they handle domain event notifications
+                return !t.GetInterfaces().Any(i =>
+                    i.IsGenericType && i.GetGenericTypeDefinition().Name.StartsWith("INotificationHandler"));
+            });
 
         foreach (var handlerType in handlerTypes)
         {

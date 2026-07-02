@@ -1,5 +1,4 @@
 using GuidedMentor.SharedKernel;
-using MediatR;
 
 namespace GuidedMentor.Mentoring.Domain.Entities;
 
@@ -12,4 +11,4 @@ public sealed record OpportunityPublishedEvent(
     MentorId MentorId,
     OpportunityType Type,
     IReadOnlyList<string> RequiredSkills,
-    DateTime OccurredAt) : IDomainEvent, INotification;
+    DateTime OccurredAt) : IDomainEvent;
