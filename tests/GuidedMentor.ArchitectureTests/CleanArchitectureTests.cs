@@ -411,7 +411,9 @@ public sealed class CleanArchitectureTests
             .HaveNameEndingWith("Command")
             .And()
             .AreClasses()
-            .GetTypes();
+            .GetTypes()
+            // Exclude manually-dispatched commands (not MediatR)
+            .Where(t => !t.Namespace!.Contains(".Analytics"));
 
         foreach (var commandType in commandTypes)
         {
@@ -501,7 +503,9 @@ public sealed class CleanArchitectureTests
             .HaveNameEndingWith("Validator")
             .And()
             .AreClasses()
-            .GetTypes();
+            .GetTypes()
+            // Exclude non-FluentValidation classes (e.g., OutputValidator, IFileAccessValidator implementations)
+            .Where(t => !t.Name.StartsWith("Output") && !t.IsInterface && !t.Namespace!.Contains(".Services"));
 
         foreach (var validatorType in validatorTypes)
         {

@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useCallback, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../providers/AuthProvider';
 
 type LoginState = 'idle' | 'loading' | 'sent' | 'error';
 
@@ -161,7 +162,78 @@ export default function LoginPage() {
             &larr; Back to home
           </Link>
         </p>
+
+        {/* Dev Quick Login — only visible in development */}
+        {import.meta.env.DEV && <DevQuickLogin />}
       </div>
+    </div>
+  );
+}
+
+/** Dev-only component for instant login as seeded users */
+function DevQuickLogin() {
+  const auth = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const devUsers = [
+    { id: '11111111-1111-1111-1111-111111111111', name: 'Sarah Chen', role: 'mentor', chapter: 'Sydney' },
+    { id: '22222222-2222-2222-2222-222222222222', name: 'James Nguyen', role: 'mentor', chapter: 'Melbourne' },
+    { id: '33333333-3333-3333-3333-333333333333', name: 'Priya Sharma', role: 'both', chapter: 'Brisbane' },
+    { id: '44444444-4444-4444-4444-444444444444', name: 'David Kim', role: 'mentor', chapter: 'Perth' },
+    { id: '66666666-6666-6666-6666-666666666666', name: 'Alex Patel', role: 'mentee', chapter: 'Sydney' },
+    { id: '77777777-7777-7777-7777-777777777777', name: 'Mia Johnson', role: 'mentee', chapter: 'Melbourne' },
+    { id: '88888888-8888-8888-8888-888888888888', name: 'Liam Brown', role: 'mentee', chapter: 'Brisbane' },
+  ];
+
+  const handleDevLogin = (user: typeof devUsers[0]) => {
+    // Create a fake JWT-like token for dev auth
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({
+      sub: user.id,
+      email: `${user.name.toLowerCase().replace(' ', '.')}@example.com`,
+      name: user.name,
+      role: user.role === 'both' ? 'mentor' : user.role,
+      exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+    }));
+    const fakeToken = `${header}.${payload}.dev-signature`;
+
+    auth?.login(fakeToken, 'dev-refresh-token', {
+      userId: user.id,
+      email: `${user.name.toLowerCase().replace(' ', '.')}@example.com`,
+      displayName: user.name,
+      profilePhotoUrl: null,
+      activeRole: user.role === 'both' ? 'mentor' : user.role as 'mentor' | 'mentee',
+    });
+
+    navigate('/');
+  };
+
+  return (
+    <div className="mt-8 glass-card p-4">
+      <p className="text-xs text-amber font-semibold mb-3 text-center uppercase tracking-wider">
+        Dev Quick Login
+      </p>
+      <div className="grid grid-cols-1 gap-2">
+        {devUsers.map((user) => (
+          <button
+            key={user.id}
+            onClick={() => handleDevLogin(user)}
+            className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-left min-h-[44px]"
+          >
+            <span className="text-sm text-text-primary">{user.name}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              user.role === 'mentor' ? 'bg-mint/20 text-mint' :
+              user.role === 'mentee' ? 'bg-violet/20 text-violet-light' :
+              'bg-amber/20 text-amber'
+            }`}>
+              {user.role} • {user.chapter}
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-text-muted mt-2 text-center">
+        These buttons only appear in development mode.
+      </p>
     </div>
   );
 }
