@@ -1,6 +1,6 @@
 # GuidedMentor — Senior AI Data Engineer Interview Preparation Guide
 
-> **Candidate Profile**: Senior AI Data Engineer (20+ Years Experience)
+> **Candidate Profile**: Senior AI Data Engineer
 > **Project**: GuidedMentor — AI-Powered Mentorship Platform
 > **Core Objective**: Demonstrate deep expertise in traditional data stacks, enterprise backend architectures, and modern cloud-native AI/Data scaling.
 
