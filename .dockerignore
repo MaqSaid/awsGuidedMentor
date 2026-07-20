@@ -13,6 +13,8 @@
 **/frontend
 **/infrastructure
 **/docs
+**/tests
+**/tools
 **/*.md
 **/*.zip
 docker-compose.yml
