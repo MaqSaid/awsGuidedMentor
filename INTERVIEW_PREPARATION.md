@@ -1,942 +1,771 @@
-# GuidedMentor — Senior AI Data Engineer Interview Preparation Guide
+# Interview Preparation — .NET Full Stack + Azure Core Services
 
-> **Candidate Profile**: Senior AI Data Engineer
-> **Project**: GuidedMentor — AI-Powered Mentorship Platform
-> **Core Objective**: Demonstrate deep expertise in traditional data stacks, enterprise backend architectures, and modern cloud-native AI/Data scaling.
+> Based on GuidedMentor project (AWS) mapped to Azure equivalents.  
+> JD: .NET Core, React.js, Next.js, Azure Core Services, OpenID Connect, OAuth 2.0, Azure DevOps, Agile
 
 ---
 
-## 1. Executive Summary & Core Project Architecture
+## Part 1: Azure ↔ AWS Service Mapping Table
 
-### High-Level Technical Overview
+| JD Requirement | Azure Service | AWS Equivalent (Your Project) | Your GuidedMentor Example |
+|---|---|---|---|
+| **Scalable Deployments** | Azure App Services | AWS Lambda (Native AOT) | `deploy-backend.yml` deploys .NET 10 Lambda per bounded context with traffic shifting (10% → 100%) |
+| **Secret Management** | Azure Key Vault | AWS Secrets Manager / Parameter Store | JWT signing keys, Gmail SMTP credentials, Google OAuth secrets stored in SSM; Terraform references `var.google_client_secret` |
+| **Async Messaging** | Azure Service Bus | Amazon EventBridge + SQS (DLQ) | `events/main.tf`: custom event bus routes `SessionAccepted` → Content Lambda, `CompletionMarked` → Engagement Lambda; SQS DLQs for failed messages |
+| **Identity Provider** | Azure AD B2C | AWS Cognito User Pool | `identity/main.tf`: Cognito with magic link (ALLOW_CUSTOM_AUTH), Google IdP, OIDC scopes `openid email profile` |
+| **OpenID Connect** | Azure AD B2C OIDC | Cognito Hosted UI + OIDC | OAuth 2.0 Authorization Code flow (`allowed_oauth_flows = ["code"]`), JWT access/id/refresh tokens |
+| **OAuth 2.0** | Azure AD OAuth | Cognito OAuth 2.0 | API Gateway Cognito Authorizer validates JWTs; 15-min access tokens, 7-day refresh tokens |
+| **CI/CD Pipelines** | Azure DevOps Pipelines | GitHub Actions | `ci-dotnet.yml`, `deploy-backend.yml`, `deploy-infrastructure.yml` — build, test, coverage gates, Terraform plan/apply |
+| **API Management** | Azure API Management | AWS API Gateway | `networking/main.tf`: REST API with Cognito authorizer, rate limiting (100 req/s), WAF, CloudWatch logging |
+| **CDN / Static Hosting** | Azure CDN + Blob Storage | CloudFront + S3 | `networking/main.tf`: S3 bucket for SPA with OAI, CloudFront distribution, security headers (CSP, HSTS) |
+| **Database** | Azure SQL / Cosmos DB | PostgreSQL (EF Core) / DynamoDB | `GuidedMentorDbContext` with 9 DbSets, JSONB columns, snake_case mapping; DynamoDB for users table in production |
+| **Background Jobs** | Azure Functions (Timer) | EventBridge Scheduler / Hangfire | `CleanupExpiredTokensJob` (every 5 min), `OpportunityExpiryJob` (daily); EventBridge `rate(5 minutes)` for lock cleanup |
+| **Real-time** | Azure SignalR Service | Self-hosted SignalR (WebSocket) | `NotificationHub` at `/hubs/notifications`, user-grouped by JWT claim |
+| **Monitoring** | Azure Monitor + App Insights | CloudWatch + X-Ray | `PerformanceBehavior` logs >500ms requests; API Gateway access logs to CloudWatch |
+| **WAF** | Azure Front Door WAF | AWS WAF v2 | `security/main.tf`: WAF Web ACL associated with API Gateway and CloudFront |
+| **File Storage** | Azure Blob Storage | S3 | Resume storage bucket with versioning, encryption, lifecycle policies (Glacier after 30 days) |
 
-GuidedMentor is a production-ready, AI-powered mentorship platform connecting AWS Community Builders across Australia with experienced professionals. The platform implements:
+---
 
-- **Domain-Driven Design (DDD)** with 4 bounded contexts (Identity, Mentoring, Content, Engagement)
-- **Clean Architecture** (.NET 10 + ASP.NET Minimal APIs) with strict layer separation
-- **CQRS Pattern** via MediatR with pipeline behaviours (Validation → Logging → Audit → Performance → Handler)
-- **AI-Powered Features**: Rule-based matching engine (0-100 compatibility scoring) and personalised session plan generation via Amazon Bedrock (Claude Sonnet 4)
-- **Real-Time Communication**: SignalR WebSocket hub for push notifications
-- **Background Processing**: Hangfire for scheduled jobs (token cleanup, opportunity expiry)
-- **Passwordless Authentication**: Magic links (UUID, 10-min TTL, single-use) + Google OAuth, self-issued JWT (HMAC-SHA256)
+## Part 2: Interview Questions & Answers with Project Examples
 
-**Current Hosting (Free Tier)**: Vercel (frontend) + Railway (backend) + Supabase (PostgreSQL) — $0/month
-**Future AWS Migration Path**: Terraform IaC with 9 modules pre-built (Lambda, Aurora, DynamoDB, CloudFront, S3, WAF, etc.)
+---
 
-### Key Data Characteristics
+### Q1: Explain your experience with .NET Core and building scalable backend systems.
 
-| Dimension | Current Scale | Enterprise Target |
-|---|---|---|
-| Users | ~100 (community pilot) | 500K+ mentors/mentees globally |
-| Sessions | ~50 active | 2M+ annual sessions |
-| AI Invocations | ~200/day | 500K+/day with streaming |
-| Notifications | ~1K/day (SignalR) | 10M+/day (multi-channel) |
-| Data Volume | ~500MB PostgreSQL | Petabyte-scale data lake |
-| Matching Engine | Real-time in-memory | Distributed ML-powered scoring |
+**Answer:**
 
-### DIAGRAM 1: Comprehensive End-to-End Application Architecture
+In GuidedMentor, I built a .NET 10 backend using Clean Architecture with four bounded contexts — Identity, Mentoring, Content, and Engagement. Each context is an independent deployable unit (Lambda function) following Domain-Driven Design.
 
-```mermaid
-graph TB
-    subgraph "CLIENT LAYER"
-        BROWSER[Browser / PWA<br/>React 19 + Module Federation]
-        MOBILE[Mobile Web<br/>Responsive PWA]
-    end
-
-    subgraph "CDN & EDGE"
-        VERCEL[Vercel Edge Network<br/>Static Assets + SSR]
-    end
-
-    subgraph "API GATEWAY LAYER"
-        RAILWAY[Railway Container<br/>ASP.NET Minimal APIs .NET 10]
-        CORS[CORS Middleware]
-        AUTH_MW[JWT Auth Middleware]
-        RATE[Rate Limiter<br/>100 req/min API, 3/15min Magic Link]
-    end
-
-    subgraph "APPLICATION LAYER — CQRS"
-        MEDIATR[MediatR Dispatcher]
-        VAL[ValidationBehavior<br/>FluentValidation]
-        LOG[LoggingBehavior<br/>Serilog + Correlation IDs]
-        AUDIT[AuditLoggingBehavior<br/>IAuditableCommand]
-        PERF[PerformanceBehavior<br/>Latency Tracking]
-        HANDLERS[Command/Query Handlers]
-    end
-
-    subgraph "DOMAIN LAYER — Pure Business Logic"
-        IDENTITY[Identity Context<br/>User Aggregate, MagicLink, Role Toggle]
-        MENTORING[Mentoring Context<br/>Session Aggregate, MatchingEngine]
-        CONTENT[Content Context<br/>SessionPlan Aggregate, AI Generation]
-        ENGAGEMENT[Engagement Context<br/>Notification Aggregate, Intent Classifier]
-    end
-
-    subgraph "INFRASTRUCTURE LAYER"
-        EF[EF Core 10<br/>PostgreSQL Provider]
-        SIGNALR[SignalR Hub<br/>/hubs/notifications]
-        HANGFIRE[Hangfire Server<br/>Background Jobs]
-        MAILKIT[MailKit<br/>Gmail SMTP]
-        POLLY[Polly v8<br/>Resilience Pipelines]
-    end
-
-    subgraph "DATA LAYER"
-        PG[(PostgreSQL 16<br/>Supabase Managed<br/>JSONB + TEXT Arrays + UUID PKs)]
-    end
-
-    subgraph "EXTERNAL SERVICES"
-        BEDROCK[Amazon Bedrock<br/>Claude Sonnet 4<br/>Session Plan Generation]
-        GOOGLE[Google OAuth 2.0<br/>Social Identity]
-        GMAIL_SVC[Gmail SMTP<br/>Magic Link Delivery]
-    end
-
-    subgraph "OBSERVABILITY"
-        SERILOG[Serilog Structured Logging]
-        OTEL[OpenTelemetry Traces]
-        HEALTH[/v1/health Endpoint]
-    end
-
-    BROWSER --> VERCEL
-    MOBILE --> VERCEL
-    VERCEL -->|HTTPS /v1/*| RAILWAY
-    VERCEL -->|WebSocket| SIGNALR
-
-    RAILWAY --> CORS --> AUTH_MW --> RATE --> MEDIATR
-    MEDIATR --> VAL --> LOG --> AUDIT --> PERF --> HANDLERS
-
-    HANDLERS --> IDENTITY
-    HANDLERS --> MENTORING
-    HANDLERS --> CONTENT
-    HANDLERS --> ENGAGEMENT
-
-    IDENTITY --> EF
-    MENTORING --> EF
-    CONTENT --> EF
-    ENGAGEMENT --> EF
-
-    EF --> PG
-    HANGFIRE --> PG
-    SIGNALR -.->|Push to clients| BROWSER
-    MAILKIT --> GMAIL_SVC
-    CONTENT -->|IChatClient| BEDROCK
-    ENGAGEMENT -->|IChatClient| BEDROCK
-    IDENTITY -->|OAuth2 Flow| GOOGLE
-
-    HANDLERS --> SERILOG
-    HANDLERS --> OTEL
-    RAILWAY --> HEALTH
+**Project Example — MediatR CQRS Pipeline:**
+```csharp
+// ServiceCollectionExtensions.cs — Pipeline behavior registration order
+services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssemblies(assembliesToScan);
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));    // 1. FluentValidation
+    cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));       // 2. Structured logging
+    cfg.AddOpenBehavior(typeof(AuditLoggingBehavior<,>));  // 3. Audit trail
+    cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));   // 4. Slow-query detection
+});
 ```
 
-### Talking Points for Section 1
-
-- **Why DDD?** The mentoring domain has complex business rules — matching algorithms, session lifecycle state machines, mutual completion flows — that benefit from explicit aggregate boundaries and domain events for cross-context communication.
-- **Why Clean Architecture?** We successfully migrated from DynamoDB to PostgreSQL by only replacing Infrastructure implementations. Domain and Application layers were untouched — proving the architecture's value.
-- **Why CQRS?** Read and write workloads have fundamentally different characteristics. Browse queries (12 mentors × scoring) are read-heavy and cacheable. Session state transitions require strong consistency and audit trails.
-- **Cost Optimisation**: The entire production stack runs at $0/month using free tiers, demonstrating that architectural excellence isn't dependent on infrastructure spend.
+**Azure Mapping:** In Azure, I'd deploy these as separate Azure App Services (or Azure Functions for event-driven workloads) behind Azure API Management, each with its own Azure SQL Database — same bounded context isolation, different hosting model.
 
 ---
 
-## 2. Backend & API Design (Current Implementation)
+### Q2: How do you design and develop RESTful APIs?
 
-### API Architecture Pattern: REST with Minimal APIs
+**Answer:**
 
-**Why REST over GraphQL/gRPC:**
-- **REST** was chosen because the platform has well-defined resource boundaries (users, mentors, sessions, plans) with predictable CRUD operations. The 4 bounded contexts map cleanly to REST resource hierarchies.
-- **GraphQL** was considered but rejected — the data graph is not deeply nested, and the added complexity of a resolver layer didn't justify the flexibility gains for this domain.
-- **gRPC** would be used for inter-service communication in a microservices decomposition (future state), but the current monolithic host makes it unnecessary.
+I use ASP.NET Minimal APIs with versioned endpoints, MediatR for CQRS, and a consistent error response envelope.
 
-### Endpoint Design
+**Project Example — Auth Endpoints:**
+```csharp
+// AuthEndpoints.cs — Versioned, grouped, documented
+var auth = app.MapGroup("/v1/auth").WithTags("Authentication");
 
-| Method | Endpoint | Context | Auth | Purpose |
-|---|---|---|---|---|
-| POST | `/v1/auth/magic-link` | Identity | Anonymous | Request magic link (always returns 200) |
-| POST | `/v1/auth/verify-magic-link` | Identity | Anonymous | Verify token, issue JWT |
-| POST | `/v1/auth/google` | Identity | Anonymous | Google OAuth exchange |
-| GET | `/v1/browse/mentors` | Mentoring | Bearer | Paginated browse with live scoring |
-| POST | `/v1/browse/lock/{mentorId}` | Mentoring | Bearer | 15-min exclusive lock |
-| POST | `/v1/sessions` | Mentoring | Bearer | Create session from lock |
-| PATCH | `/v1/sessions/{id}/accept` | Mentoring | Bearer | Mentor accepts request |
-| PATCH | `/v1/sessions/{id}/complete` | Mentoring | Bearer | Mark complete (role-aware) |
-| POST | `/v1/sessions/{id}/plan/generate` | Content | Bearer | Trigger AI plan generation |
-| GET | `/v1/sessions/{id}/plan` | Content | Bearer | Retrieve generated plan |
-| POST | `/v1/assistant/chat` | Engagement | Bearer | AI help (SSE streaming) |
-| GET | `/v1/notifications` | Engagement | Bearer | User notifications |
-| GET | `/v1/dashboard/mentee` | Engagement | Bearer | Mentee dashboard data |
-| GET | `/v1/dashboard/mentor` | Engagement | Bearer | Mentor dashboard data |
-| GET | `/v1/health` | Shared | Anonymous | Dependency health check |
-
-### Authentication & Authorisation
-
-**Passwordless Architecture (Zero Password Storage):**
-1. User requests magic link → API generates UUID token (122-bit entropy), stores in `auth_tokens` table with 10-min TTL
-2. Always returns HTTP 200 (prevents email enumeration attacks)
-3. Email delivered via Gmail SMTP (MailKit)
-4. User clicks link → token verified (single-use) → self-issued JWT returned
-5. JWT: HMAC-SHA256, 15-min access token + 7-day rotating refresh token
-6. Rate limited: max 3 magic link requests per email per 15 minutes
-
-**Google OAuth 2.0:** Alternative social identity federation — exchanges authorization code for platform JWT.
-
-### Rate Limiting Strategy
-
-| Endpoint Category | Limit | Window | Rationale |
-|---|---|---|---|
-| General API | 100 requests | 1 minute | Prevents abuse while allowing normal usage |
-| Magic Link Request | 3 requests | 15 minutes | Anti-enumeration + cost control |
-| AI Chat | 20 requests | 1 minute | Token cost management (Bedrock pricing) |
-| Browse Mentors | 30 requests | 1 minute | Compute-intensive (matching engine) |
-
-### Performance Optimisation
-
-- **Connection Pooling**: EF Core manages PostgreSQL connection pool (default 100 connections via Npgsql)
-- **Pagination**: All list endpoints use cursor/offset pagination (default page size 12)
-- **Lazy Loading Disabled**: Explicit eager loading via `.Include()` to prevent N+1 queries
-- **Response Compression**: Brotli/Gzip middleware for JSON responses
-- **Caching Strategy**: TanStack Query on frontend (stale-while-revalidate), with cache invalidation via SignalR pushes
-- **Streaming**: AI responses use Server-Sent Events (SSE) for real-time token delivery
-- **Resilience**: Polly v8 pipelines with circuit breaker + retry + timeout for external calls (Bedrock, Gmail)
-
-### Error Response Contract
-
-All errors follow a consistent shape for client consumption:
-```json
+auth.MapPost("/magic-link", async (MagicLinkRequest request, IMediator mediator, CancellationToken ct) =>
 {
-  "statusCode": 422,
-  "error": "ValidationError",
-  "message": "Cannot reduce maxMentees to 2. You currently have 3 active mentee(s).",
-  "correlationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    var command = new RequestMagicLinkCommand(request.Email);
+    await mediator.Send(command, ct);
+    // Always return 200 to prevent email enumeration
+    return Results.Ok(new { message = "If this email is registered, you'll receive a sign-in link." });
+})
+.WithName("RequestMagicLink")
+.Produces(StatusCodes.Status200OK)
+.AllowAnonymous();
+```
+
+**Design Principles Applied:**
+- Plural nouns: `/v1/sessions`, `/v1/mentors`
+- Actions as sub-paths: `/v1/sessions/{id}/complete`
+- Consistent error shape: `{ statusCode, error, message, correlationId }`
+- Security: always 200 on auth endpoints (prevents enumeration)
+
+**Azure Mapping:** Azure API Management provides the same API gateway features (rate limiting, JWT validation, CORS) that our AWS API Gateway + Cognito Authorizer provides.
+
+---
+
+### Q3: How have you integrated Entity Framework with relational databases?
+
+**Answer:**
+
+GuidedMentor uses EF Core with PostgreSQL in the local/free tier and DynamoDB in production AWS. The EF Core layer acts as a persistence adapter.
+
+**Project Example — DbContext Configuration:**
+```csharp
+// GuidedMentorDbContext.cs
+public sealed class GuidedMentorDbContext : DbContext
+{
+    public DbSet<UserEntity> Users => Set<UserEntity>();
+    public DbSet<MentorEntity> Mentors => Set<MentorEntity>();
+    public DbSet<SessionEntity> Sessions => Set<SessionEntity>();
+    public DbSet<AuthTokenEntity> AuthTokens => Set<AuthTokenEntity>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MentorEntity>(e =>
+        {
+            e.ToTable("mentors");
+            e.Property(x => x.Availability).HasColumnName("availability").HasColumnType("jsonb");
+            e.Property(x => x.ExpertiseAreas).HasColumnName("expertise_areas"); // TEXT[]
+        });
+    }
 }
 ```
-No stack traces are ever exposed. Correlation IDs enable distributed tracing across Serilog → OpenTelemetry → CloudWatch.
 
-### DIAGRAM 2: API Design & Component Interaction Flow
+**Key Patterns:**
+- Persistence entities are separate from Domain entities (mapping in repositories)
+- JSONB columns for complex nested objects (availability schedules)
+- `ExecuteUpdateAsync` / `ExecuteDeleteAsync` for bulk operations without loading entities
+- Connection string from `ConnectionStrings:DefaultConnection`
 
-```mermaid
-sequenceDiagram
-    participant C as React Client
-    participant GW as API Gateway (Minimal APIs)
-    participant MW as Middleware Pipeline
-    participant M as MediatR
-    participant VB as ValidationBehavior
-    participant LB as LoggingBehavior
-    participant AB as AuditBehavior
-    participant H as Handler
-    participant R as Repository (EF Core)
-    participant DB as PostgreSQL
-    participant SR as SignalR Hub
-    participant AI as Amazon Bedrock
-
-    C->>GW: POST /v1/sessions/{id}/plan/generate
-    GW->>MW: CORS - Auth (JWT) - Rate Limit
-    MW->>M: Dispatch GenerateSessionPlanCommand
-    M->>VB: Validate (FluentValidation)
-    VB->>LB: Log request + correlationId
-    LB->>AB: Record audit trail (who, what, when)
-    AB->>H: Execute GenerateSessionPlanHandler
-
-    H->>R: Get Session + Mentor + Mentee profiles
-    R->>DB: SELECT with JSONB expansion
-    DB-->>R: Entity data
-    R-->>H: Domain entities
-
-    H->>AI: IChatClient.GetResponseAsync(prompt)
-    AI-->>H: Structured JSON (session plan)
-
-    H->>H: Parse + Validate (3-7 items, sum=35 min)
-    H->>R: Save SessionPlan (JSONB column)
-    R->>DB: UPDATE sessions SET session_plan = jsonb
-    DB-->>R: Success
-
-    H->>SR: Notify mentee Plan ready
-    SR-->>C: WebSocket push notification
-
-    H-->>M: Result SessionPlan Success
-    M-->>GW: 200 OK + plan JSON
-    GW-->>C: Response with correlationId header
-```
-
-### MediatR Pipeline Behaviours (Cross-Cutting Concerns)
-
-```mermaid
-graph LR
-    REQ[Incoming Request] --> VB[ValidationBehavior<br/>FluentValidation auto-discovery]
-    VB -->|Valid| LB[LoggingBehavior<br/>Serilog structured + correlationId]
-    VB -->|Invalid| ERR[422 Validation Error]
-    LB --> AB[AuditLoggingBehavior<br/>IAuditableCommand to CloudWatch]
-    AB --> PB[PerformanceBehavior<br/>Stopwatch + threshold alert]
-    PB --> HANDLER[Actual Handler]
-    HANDLER --> RESULT[Result T or Error]
-```
-
-### Talking Points for Section 2
-
-- **Minimal APIs vs Controllers**: Chosen for performance (no reflection overhead), AOT-readiness, and conciseness. Each endpoint is 5-10 lines mapping HTTP to MediatR.
-- **OpenAPI 3.1 Auto-Generation**: Scalar docs at `/scalar/v1` — contract-first development enables typed client generation.
-- **Anti-Enumeration Pattern**: Magic link endpoint always returns 200 regardless of email existence. This is a deliberate security decision, not a bug.
-- **Optimistic Concurrency**: Session locking uses a 15-minute TTL lock with `LockId` and `LockExpiresAt` columns — prevents two mentees from requesting the same mentor simultaneously.
-- **Idempotency**: Magic link verification is single-use (token marked `used=true` on first verify). Prevents replay attacks.
+**Azure Mapping:** Azure SQL Database + EF Core works identically. Azure Key Vault stores the connection string instead of environment variables. For NoSQL needs, Cosmos DB replaces DynamoDB.
 
 ---
 
-## 3. Database Design & Relational Storage (Current Implementation)
+### Q4: Describe your experience with Azure App Services and Azure Key Vault (secure deployments).
 
-### Relational Schema Design (PostgreSQL 16)
+**Answer (mapped from AWS):**
 
-The database schema follows DDD aggregate boundaries with explicit table-per-entity mapping. EF Core handles the ORM layer with a clear separation between persistence entities (Infrastructure) and domain entities (Domain).
+In GuidedMentor, I deploy .NET 10 Native AOT Lambdas behind API Gateway — the Azure equivalent is App Service or Azure Functions. For secrets, I use AWS SSM Parameter Store and Secrets Manager — the Azure equivalent is Key Vault.
 
-**Design Decisions:**
-- **UUID Primary Keys**: All tables use `UUID` PKs generated application-side — enables distributed ID generation without sequences
-- **JSONB Columns**: Used for complex nested data (session plans, availability schedules, checklist state) — avoids excessive normalisation for read-heavy structures
-- **TEXT[] Arrays**: PostgreSQL native arrays for skills, certifications, topics — enables containment operator for efficient filtering
-- **snake_case Columns**: PostgreSQL convention, mapped via EF Core fluent configuration
-- **Timestamps**: `created_at` and `updated_at` on all mutable entities for audit compliance
-
-### Core Tables and Relationships
-
-| Table | PK | Key Columns | Indexes | Context |
-|---|---|---|---|---|
-| `users` | `id` (UUID) | email, display_name, active_role, aws_chapter, city, is_disabled | UNIQUE(email) | Identity |
-| `mentors` | `id` (UUID) | user_id (FK), expertise_areas (TEXT[]), topics (TEXT[]), max_mentees, active_mentee_count, availability (JSONB) | — | Mentoring |
-| `mentees` | `id` (UUID) | user_id (FK), skills (TEXT[]), primary_goal, years_of_experience, availability (JSONB) | — | Mentoring |
-| `sessions` | `id` (UUID) | mentee_id, mentor_id, status, session_plan (JSONB), checklist_state (JSONB), lock_id, lock_expires_at | — | Mentoring |
-| `auth_tokens` | `token` (UUID) | email, used, expires_at | — | Identity |
-| `notifications` | `id` (UUID) | recipient_user_id, type, message, is_read | — | Engagement |
-| `opportunities` | `id` (UUID) | mentor_id, title, type, required_skills (TEXT[]), is_active, expires_at | — | Mentoring |
-| `meetups` | `id` (UUID) | chapter, title, event_date, venue_name, is_cancelled | — | Engagement |
-| `engagement_events` | `id` (UUID) | user_id_hash, event_type, metadata (JSONB), active_role | — | Engagement |
-
-### Indexing Strategy
-
-| Index | Type | Purpose |
-|---|---|---|
-| `users.email` | UNIQUE B-tree | Fast login lookup, enforce uniqueness |
-| `sessions(mentee_id, status)` | Composite B-tree | Dashboard queries (active sessions per mentee) |
-| `sessions(mentor_id, status)` | Composite B-tree | Dashboard queries (pending requests per mentor) |
-| `auth_tokens(expires_at)` | B-tree | Hangfire cleanup job (expired token deletion) |
-| `notifications(recipient_user_id, is_read)` | Composite B-tree | Unread count badge queries |
-| `opportunities(is_active, expires_at)` | Partial index | Active opportunity filtering |
-| `mentors.expertise_areas` | GIN | Array containment queries for skill matching |
-
-### Normalisation vs Denormalisation Decisions
-
-| Data | Strategy | Rationale |
-|---|---|---|
-| User profile fields | Normalised (3NF) | Frequently updated, low volume per record |
-| Session plans | Denormalised (JSONB) | Write-once, complex nested structure, always read as a whole |
-| Availability schedule | Denormalised (JSONB) | Complex time-slot structure, rarely queried independently |
-| Skills/expertise | Semi-normalised (TEXT[]) | Queried with array operators, no join overhead |
-| Checklist state | Denormalised (JSONB) | Frequent updates to individual items, read as whole for display |
-| Engagement events | Denormalised (JSONB metadata) | Flexible schema, append-only analytics |
-
-### Data Warehousing Strategy (Enterprise Context using SSIS/SSRS)
-
-In an enterprise context using Microsoft SQL Server Ecosystem, the data warehousing strategy would layer as follows:
-
-**ETL Pipeline (SSIS):**
-1. **Extract**: Change Data Capture (CDC) on PostgreSQL source tables, SSIS packages pull incremental changes
-2. **Transform**: SSIS Data Flow Tasks for SCD Type 2 on `users` (track role changes, chapter migrations), session fact aggregation, skill taxonomy normalisation, time-dimension enrichment
-3. **Load**: Star schema into SQL Server Analysis Services (SSAS) cubes
-
-**Star Schema Design:**
-- **Fact Tables**: `fact_sessions` (session lifecycle events), `fact_matching` (browse/score events), `fact_engagement` (AI interactions, notifications)
-- **Dimension Tables**: `dim_user`, `dim_chapter`, `dim_skill`, `dim_time`, `dim_session_status`
-- **Slowly Changing Dimensions**: SCD Type 2 on `dim_user` (track role toggles, onboarding status changes over time)
-
-**BI Reporting (SSRS):**
-- Platform health dashboards (session completion rates, average matching scores)
-- Mentor capacity utilisation reports
-- AI cost analysis (token usage trends)
-- Chapter engagement heatmaps
-- Cohort retention analysis (30/60/90 day)
-
-### DIAGRAM 3: Database Schema ERD and Warehousing Architecture
-
-```mermaid
-erDiagram
-    USERS {
-        uuid id PK
-        text email UK
-        text display_name
-        text active_role
-        text aws_chapter
-        text city
-        boolean is_disabled
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    MENTORS {
-        uuid id PK
-        uuid user_id FK
-        text_arr expertise_areas
-        text_arr certifications
-        text_arr topics
-        int years_of_experience
-        int max_mentees
-        int active_mentee_count
-        jsonb availability
-        text availability_status
-        timestamp created_at
-    }
-
-    MENTEES {
-        uuid id PK
-        uuid user_id FK
-        text_arr skills
-        text experience_level
-        int years_of_experience
-        text primary_goal
-        jsonb availability
-        timestamp created_at
-    }
-
-    SESSIONS {
-        uuid id PK
-        uuid mentee_id FK
-        uuid mentor_id FK
-        text status
-        jsonb session_plan
-        jsonb checklist_state
-        uuid lock_id
-        timestamp lock_expires_at
-        timestamp mentee_completed_at
-        timestamp mentor_completed_at
-        timestamp created_at
-    }
-
-    AUTH_TOKENS {
-        uuid token PK
-        text email
-        boolean used
-        timestamp expires_at
-        timestamp created_at
-    }
-
-    NOTIFICATIONS {
-        uuid id PK
-        uuid recipient_user_id FK
-        text type
-        text message
-        boolean is_read
-        timestamp created_at
-    }
-
-    OPPORTUNITIES {
-        uuid id PK
-        uuid mentor_id FK
-        text title
-        text type
-        text_arr required_skills
-        boolean is_active
-        timestamp expires_at
-    }
-
-    USERS ||--o| MENTORS : "has mentor profile"
-    USERS ||--o| MENTEES : "has mentee profile"
-    MENTORS ||--o{ SESSIONS : "participates"
-    MENTEES ||--o{ SESSIONS : "participates"
-    USERS ||--o{ NOTIFICATIONS : "receives"
-    USERS ||--o{ AUTH_TOKENS : "requests"
-    MENTORS ||--o{ OPPORTUNITIES : "posts"
+**Project Example — Deployment Pipeline:**
+```yaml
+# deploy-backend.yml — Traffic shifting deployment
+- name: Deploy with traffic shifting
+  run: |
+    # 10% traffic to new version, monitor 2 minutes, then 100%
+    aws lambda update-alias \
+      --function-name "${FUNCTION_NAME}" \
+      --name "live" \
+      --function-version "${CURRENT_VERSION}" \
+      --routing-config "AdditionalVersionWeights={${VERSION}=0.1}"
 ```
 
-### Warehousing Layer Architecture
-
-```mermaid
-graph LR
-    subgraph "OLTP Sources"
-        PG[(PostgreSQL 16<br/>Operational DB)]
-    end
-
-    subgraph "ETL Layer (SSIS)"
-        CDC[Change Data Capture]
-        TRANSFORM[Data Flow Tasks<br/>SCD Type 2, Aggregation]
-        STAGE[Staging Tables]
-    end
-
-    subgraph "Data Warehouse (SQL Server)"
-        FACT_S[fact_sessions]
-        FACT_M[fact_matching]
-        FACT_E[fact_engagement]
-        DIM_U[dim_user SCD2]
-        DIM_C[dim_chapter]
-        DIM_T[dim_time]
-        DIM_SK[dim_skill]
-    end
-
-    subgraph "BI Layer (SSRS)"
-        DASH[Executive Dashboards]
-        REPORT[Operational Reports]
-        ADHOC[Self-Service Analytics]
-    end
-
-    PG --> CDC --> TRANSFORM --> STAGE
-    STAGE --> FACT_S
-    STAGE --> FACT_M
-    STAGE --> FACT_E
-    STAGE --> DIM_U
-    STAGE --> DIM_C
-    STAGE --> DIM_T
-    STAGE --> DIM_SK
-    FACT_S --> DASH
-    FACT_M --> REPORT
-    FACT_E --> ADHOC
-```
-
-### Talking Points for Section 3
-
-- **Why PostgreSQL over DynamoDB for current state?** The project originally used DynamoDB but migrated to PostgreSQL. Reason: complex relational queries (matching engine joins mentor + mentee profiles), JSONB flexibility, strong consistency guarantees, and $0 hosting via Supabase free tier.
-- **JSONB vs Separate Tables for Session Plans**: Session plans are write-once (generated by AI), always read as a complete unit, and have variable schema (3-7 agenda items). JSONB avoids a 3-table join for every read.
-- **GIN Index on TEXT[] Columns**: Enables efficient skill-based queries using PostgreSQL array containment operators, without needing a junction table.
-- **SCD Type 2 for User Dimension**: Critical for analytics — we need to know what chapter a user was in at the time of a session, not just their current chapter.
-- **CDC vs Full Extract**: CDC minimises ETL window from hours to minutes. For a platform with 2M+ annual sessions, full extracts would be prohibitively expensive.
+**How I'd do this in Azure:**
+- **App Service Deployment Slots**: Blue/green deployment using staging slots with traffic routing (same concept as Lambda aliases with weighted routing)
+- **Azure Key Vault**: Reference secrets as `@Microsoft.KeyVault(SecretUri=...)` in App Service configuration
+- **Managed Identity**: App Service uses system-assigned managed identity to access Key Vault (no credentials in code — same as IAM roles for Lambda)
 
 ---
 
-## 4. Enterprise Scale-Out and Modern Cloud Transformation (AWS and Modern Stack)
+### Q5: How do you implement asynchronous messaging for decoupled microservices?
 
-### Re-Architecture Vision
+**Answer:**
 
-Transform GuidedMentor from a single-region, free-tier deployment to a globally distributed, petabyte-scale AI-native platform capable of handling 500K+ users, 2M+ annual sessions, and real-time ML-powered matching.
+GuidedMentor uses EventBridge as a custom event bus for cross-context communication, with SQS dead-letter queues for failure handling. The Azure equivalent is Azure Service Bus.
 
-### 4.1 Cloud Platform (AWS) Re-Platforming
+**Project Example — Event-Driven Architecture:**
+```hcl
+# events/main.tf — Cross-context event routing
+resource "aws_cloudwatch_event_rule" "session_accepted" {
+  name           = "${local.name_prefix}-session-accepted"
+  event_bus_name = aws_cloudwatch_event_bus.main.name
 
-| Current Component | AWS Target | Rationale |
-|---|---|---|
-| Railway (.NET container) | AWS Lambda + API Gateway / EKS Fargate | Serverless for stateless APIs; EKS for WebSocket |
-| Supabase PostgreSQL | Amazon Aurora PostgreSQL Serverless v2 | Auto-scaling 0.5-128 ACUs, Multi-AZ, PITR |
-| Vercel (React) | CloudFront + S3 | Global edge distribution, WAF integration |
-| Gmail SMTP | Amazon SES | 62K free emails/month, bounce handling |
-| Hangfire | AWS Step Functions + EventBridge Scheduler | Serverless orchestration |
-| SignalR | AWS AppSync GraphQL Subscriptions | Managed WebSocket at scale |
-| Self-issued JWT | Amazon Cognito | Managed auth, MFA, social federation |
-| Serilog to Console | CloudWatch Logs + X-Ray | Centralised logging, distributed tracing |
-
-**Multi-Region Strategy:**
-- Primary: `ap-southeast-2` (Sydney) — closest to Australian user base
-- DR: `ap-southeast-4` (Melbourne) — cross-region Aurora replication
-- Edge: CloudFront PoPs across APAC for static assets
-
-### 4.2 Data Transformation and Modeling with dbt
-
-**Replacing legacy SSIS ETL with dbt (data build tool):**
-
-```
-dbt_project/
-  models/
-    staging/
-      stg_users.sql              -- Source cleaning + typing
-      stg_sessions.sql           -- JSONB extraction + flattening
-      stg_matching_events.sql    -- Score decomposition
-      stg_engagement.sql         -- Event parsing
-    intermediate/
-      int_session_lifecycle.sql  -- State machine transitions
-      int_user_journey.sql       -- Onboarding funnel
-      int_matching_effectiveness.sql  -- Score to outcome correlation
-    marts/
-      core/
-        dim_users.sql            -- SCD Type 2 via dbt snapshots
-        dim_chapters.sql         -- Australian chapter hierarchy
-        fct_sessions.sql         -- Session fact grain
-      engagement/
-        fct_ai_interactions.sql  -- Token usage, latency, model version
-        fct_notifications.sql    -- Delivery, read rates
-      ml_features/
-        user_embeddings_input.sql    -- Feature store input
-        matching_training_data.sql   -- Historical match outcomes
-  snapshots/
-    user_snapshot.sql            -- SCD Type 2 implementation
-  tests/
-    assert_session_plan_valid.sql
-    test_matching_score_bounds.sql
-  macros/
-    extract_jsonb_array.sql      -- Reusable JSONB parsing
+  event_pattern = jsonencode({
+    source      = ["guidedmentor.mentoring"]
+    detail-type = ["SessionAccepted"]
+  })
+}
 ```
 
-**Why dbt over SSIS:**
-- **Version controlled** — transformations live in Git alongside application code
-- **Testable** — built-in data testing (uniqueness, referential integrity, custom assertions)
-- **Modular** — ref() function creates a DAG; changes propagate automatically
-- **Incremental** — dbt incremental models process only new/changed data
-- **Cloud-native** — runs on Redshift, Snowflake, BigQuery, or Aurora directly
-- **Documentation** — auto-generated lineage graphs and data dictionaries
+**Application Code — Publishing Events:**
+```csharp
+// MarkCompleteHandler.cs — Publish domain events after state change
+await _eventBridgePublisher.ScheduleCompletionReminderAsync(
+    session.Id.Value, session.MentorId.Value, reminderDate, cancellationToken);
 
-### 4.3 Graph Database Layer (Neo4j / Amazon Neptune)
-
-**Why Graph for GuidedMentor:**
-
-The mentoring domain has inherently graph-shaped data: mentor-mentee relationships, skill networks, chapter communities, session chains, and opportunity recommendations form a complex interconnected network that relational JOINs handle poorly at scale.
-
-**Graph Data Model:**
-
-```
-(:User {id, email, chapter})
-  -[:HAS_ROLE {active}]-> (:Mentor {maxMentees, availability})
-  -[:HAS_ROLE {active}]-> (:Mentee {primaryGoal, experienceLevel})
-
-(:Mentor)-[:MENTORS {since, status}]->(:Mentee)
-(:Mentor)-[:EXPERT_IN {years}]->(:Skill {name, category})
-(:Mentee)-[:WANTS_TO_LEARN]->(:Skill)
-(:Mentor)-[:BELONGS_TO]->(:Chapter {name, city, state})
-(:Mentee)-[:BELONGS_TO]->(:Chapter)
-(:Session {id, status})-[:BETWEEN]->(:Mentor)
-(:Session)-[:BETWEEN]->(:Mentee)
-(:Session)-[:HAS_PLAN]->(:SessionPlan {title, totalMinutes})
-(:Skill)-[:RELATED_TO {strength}]->(:Skill)
-(:Chapter)-[:NEAR {distance_km}]->(:Chapter)
+await _eventBridgePublisher.ScheduleEscalationAsync(
+    session.Id.Value, escalationDate, cancellationToken);
 ```
 
-**Key Graph Queries (Cypher):**
-
-1. Enhanced Matching (2nd-degree connections):
-```cypher
-MATCH (mentee:Mentee {id: $menteeId})-[:WANTS_TO_LEARN]->(skill:Skill)
-      <-[:EXPERT_IN]-(mentor:Mentor)
-WHERE mentor.availability = 'available'
-  AND mentor.activeMenteeCount < mentor.maxMentees
-WITH mentor, COUNT(skill) as sharedSkills
-MATCH (mentor)-[:BELONGS_TO]->(chapter:Chapter)
-      <-[:NEAR]-(menteeChapter:Chapter)
-      <-[:BELONGS_TO]-(mentee)
-RETURN mentor, sharedSkills, chapter
-ORDER BY sharedSkills DESC
-LIMIT 12
-```
-
-2. Mentor Network Effect (who mentored my mentor?):
-```cypher
-MATCH path = (mentee:Mentee {id: $id})<-[:MENTORS*1..3]-(ancestor:Mentor)
-RETURN path, LENGTH(path) as depth
-```
-
-3. Skill Gap Analysis:
-```cypher
-MATCH (mentee:Mentee {id: $id})-[:WANTS_TO_LEARN]->(goal:Skill)
-MATCH (goal)-[:RELATED_TO*1..2]->(related:Skill)
-WHERE NOT (mentee)-[:KNOWS]->(related)
-RETURN related.name, COUNT(*) as relevance
-ORDER BY relevance DESC
-```
-
-**Amazon Neptune vs Neo4j:**
-- Neptune: Managed, serverless scaling, native AWS integration, Gremlin + openCypher
-- Neo4j (Aura): More mature Cypher, better tooling, stronger community
-- Recommendation: Neptune for production (AWS-native); Neo4j for development
-
-### 4.4 Vector Infrastructure (Embeddings, Semantic Search, RAG)
-
-**Use Cases for Vector Storage in GuidedMentor:**
-
-1. **Semantic Matching** — Encode mentor expertise and mentee goals into vector space; find matches based on semantic similarity rather than keyword overlap.
-2. **RAG for AI Help Assistant** — Embed platform documentation into a vector store. Retrieve relevant chunks per query, reducing token costs by 90%+ while improving answer quality.
-3. **Session Plan Retrieval** — Find similar past session plans for new pairs based on embedding similarity.
-4. **Opportunity Matching** — Semantic matching between opportunity descriptions and mentee skill profiles.
-
-**Vector Store Selection Matrix:**
-
-| Criteria | pgvector (Aurora) | OpenSearch Serverless | Pinecone |
-|---|---|---|---|
-| Operational overhead | Zero (same DB) | Low (managed) | Zero (SaaS) |
-| Scale | 10M vectors | Billions | Billions |
-| Metadata filtering | Full SQL WHERE | DSL filtering | Rich metadata |
-| Cost at scale | Included in Aurora | ~$25/month | ~$70/month |
-| Hybrid search | Limited | Excellent | Good |
-| AWS-native | Yes | Yes | No |
-
-**Recommendation**: Start with pgvector on Aurora (zero additional infra), graduate to OpenSearch Serverless when exceeding 10M vectors.
-
-**RAG Architecture:**
-
-```mermaid
-graph TB
-    subgraph "Embedding Pipeline"
-        SOURCE[Source Documents<br/>Profiles, Plans, FAQ]
-        EMBED[Amazon Bedrock Embeddings<br/>Titan Embeddings v2]
-        CHUNK[Chunking: 512 tokens, 50 overlap]
-    end
-
-    subgraph "Vector Storage"
-        PGVEC[(pgvector on Aurora<br/>HNSW index, 1536 dims)]
-    end
-
-    subgraph "Retrieval Layer"
-        QUERY[User Query]
-        QEMBED[Query Embedding]
-        ANN[Approximate Nearest Neighbor<br/>k=5, cosine similarity]
-        RERANK[Cross-Encoder Reranking]
-    end
-
-    subgraph "Generation Layer"
-        CONTEXT[Retrieved Context + Query]
-        LLM[Amazon Bedrock Claude Sonnet 4]
-        RESPONSE[Grounded AI Response]
-    end
-
-    SOURCE --> CHUNK --> EMBED --> PGVEC
-    QUERY --> QEMBED --> ANN
-    ANN --> PGVEC
-    ANN --> RERANK --> CONTEXT --> LLM --> RESPONSE
-```
-
-### 4.5 Python Backend Ecosystem
-
-**High-Performance Data Processing and AI Orchestration:**
-
-| Library | Role in Architecture |
+**Azure Service Bus Mapping:**
+| AWS (My Project) | Azure Service Bus Equivalent |
 |---|---|
-| **FastAPI** | High-performance async API for ML inference endpoints |
-| **SQLAlchemy 2.0** | Async ORM for Python data services accessing Aurora PostgreSQL |
-| **Pandas / Polars** | Data manipulation for analytics pipelines, feature engineering |
-| **PySpark** | Distributed processing on EMR for petabyte-scale batch scoring |
-| **LangChain** | RAG orchestration, prompt chaining, tool use with Bedrock |
-| **LlamaIndex** | Document indexing, vector store abstraction, query engines |
-| **scikit-learn** | Feature preprocessing, clustering, classification |
-| **boto3** | AWS SDK for Bedrock, S3, SQS, DynamoDB, SES |
-| **Pydantic** | Data validation, settings management, API schemas |
-| **Celery + Redis** | Distributed task queue for async embedding generation |
-| **MLflow** | Experiment tracking, model versioning, A/B testing |
-
-**Python Service Architecture (Complementing .NET Core Backend):**
-
-```mermaid
-graph TB
-    subgraph "API Layer .NET 10 Primary"
-        DOTNET[ASP.NET Minimal APIs<br/>CQRS, Auth, CRUD]
-    end
-
-    subgraph "ML-AI Service Layer Python FastAPI"
-        FASTAPI[FastAPI<br/>ML Inference Endpoints]
-        EMBED_SVC[Embedding Service<br/>Batch + Real-time]
-        MATCH_ML[ML Matching Service<br/>Gradient Boosted Scoring]
-        RAG_SVC[RAG Service<br/>LangChain + LlamaIndex]
-    end
-
-    subgraph "Data Processing PySpark on EMR"
-        BATCH[Batch Scoring<br/>Full Re-computation]
-        FEATURES[Feature Engineering<br/>User Embeddings]
-        ANALYTICS[Analytics Aggregation]
-    end
-
-    subgraph "Storage"
-        AURORA[(Aurora PostgreSQL<br/>pgvector)]
-        S3[(S3 Data Lake<br/>Parquet)]
-        REDIS[(ElastiCache Redis<br/>Feature Cache)]
-        MLFLOW_DB[(MLflow<br/>Model Registry)]
-    end
-
-    DOTNET -->|gRPC| FASTAPI
-    FASTAPI --> MATCH_ML
-    FASTAPI --> RAG_SVC
-    FASTAPI --> AURORA
-    FASTAPI --> REDIS
-    BATCH --> S3
-    BATCH --> AURORA
-    FEATURES --> REDIS
-    MATCH_ML --> MLFLOW_DB
-    EMBED_SVC --> AURORA
-    RAG_SVC --> AURORA
-```
-
-**Key Python Patterns:**
-
-1. **Feature Store Pattern** — Pre-compute user embeddings and matching features nightly via PySpark on EMR. Store in Aurora (pgvector) + Redis (hot cache). Real-time inference uses cached features.
-
-2. **A/B Testing for Matching Algorithm** — MLflow tracks experiments comparing rule-based (current) vs ML-based (gradient boosted) matching. Canary routes 10% traffic to ML model; measure session completion rate.
-
-3. **Async Embedding Pipeline** — Profile update triggers SQS message to Python embedding service. New embeddings computed asynchronously, stored in pgvector. Browse results reflect updates within 30 seconds.
-
-4. **RAG with Citation** — LlamaIndex query engine returns source nodes alongside answers. AI Help Assistant cites specific documentation sections.
-
-### 4.6 Complete Cloud-Native Architecture Diagram
-
-```mermaid
-graph TB
-    subgraph "Edge Layer"
-        CF[CloudFront CDN]
-        WAF[AWS WAF]
-        R53[Route 53 Latency Routing]
-    end
-
-    subgraph "Compute Layer"
-        APIGW[API Gateway REST + WebSocket]
-        LAMBDA[Lambda Functions Stateless]
-        EKS[EKS Fargate Long-running]
-        FASTAPI_SVC[FastAPI on ECS ML Inference]
-    end
-
-    subgraph "AI ML Layer"
-        BEDROCK[Amazon Bedrock Claude Sonnet 4]
-        TITAN[Titan Embeddings v2 1536d]
-        SAGEMAKER[SageMaker Custom Matching]
-        NEPTUNE_DB[(Amazon Neptune Graph)]
-    end
-
-    subgraph "Data Layer"
-        AURORA_DB[(Aurora PostgreSQL Serverless v2 pgvector)]
-        DYNAMO_DB[(DynamoDB Session Locks)]
-        S3_LAKE[(S3 Data Lake Parquet Iceberg)]
-        REDIS_C[(ElastiCache Redis Cache)]
-    end
-
-    subgraph "Events"
-        EB[EventBridge Domain Events]
-        SQS_Q[SQS Async Processing]
-        KINESIS_S[Kinesis Real-time Stream]
-    end
-
-    subgraph "Analytics"
-        EMR_S[EMR Serverless PySpark]
-        RS[(Redshift Serverless Warehouse)]
-        QS[QuickSight BI]
-    end
-
-    R53 --> CF --> WAF --> APIGW
-    APIGW --> LAMBDA
-    APIGW --> EKS
-    LAMBDA --> AURORA_DB
-    LAMBDA --> BEDROCK
-    EKS --> REDIS_C
-    FASTAPI_SVC --> SAGEMAKER
-    FASTAPI_SVC --> NEPTUNE_DB
-    FASTAPI_SVC --> TITAN
-    LAMBDA --> EB
-    EB --> SQS_Q --> FASTAPI_SVC
-    KINESIS_S --> EMR_S --> S3_LAKE --> RS --> QS
-```
-
-### Talking Points for Section 4
-
-- **Polyglot Architecture**: .NET 10 for API layer (strong typing, CQRS). Python for ML/AI (superior ecosystem). gRPC for inter-service communication.
-- **Aurora Serverless v2**: Auto-scales 0.5-128 ACUs. Off-peak scales down; browse spikes scale up in seconds.
-- **Event-Driven over Polling**: EventBridge replaces Hangfire. Domain events flow through rules to targeted consumers.
-- **Data Lake + Warehouse Duality**: S3 Iceberg for raw/processed lake; Redshift for analytical queries. Glue Catalog unifies schema.
-- **pgvector first, OpenSearch later**: Start simple (same database), graduate when scale demands it.
+| EventBridge custom bus | Service Bus Topic |
+| Event rules (pattern matching) | Topic Subscriptions with filters |
+| SQS Dead-Letter Queue | Service Bus built-in DLQ |
+| EventBridge Scheduler | Azure Functions Timer Trigger |
+| `source = ["guidedmentor.mentoring"]` | Topic filter on `Source` property |
 
 ---
 
-## 5. Advanced Interview Scenarios and Edge Cases (Q&A Appendix)
+### Q6: Explain your authentication/authorization implementation using OpenID Connect and OAuth 2.0.
 
-### Category A: Architectural Pivots and Trade-offs
+**Answer:**
 
-**Q1: Your matching engine is a pure in-memory function. How would you handle 500K users?**
+GuidedMentor implements passwordless authentication using magic links + Google OAuth, issued via AWS Cognito (OIDC-compliant identity provider). The Azure equivalent is Azure AD B2C.
 
-The current MatchingEngine is O(n) per browse request. At 50K active mentors, that is 50K score computations per request.
+**Project Example — Cognito OAuth Configuration:**
+```hcl
+# identity/main.tf
+resource "aws_cognito_user_pool_client" "web" {
+  allowed_oauth_flows  = ["code"]           # Authorization Code flow (PKCE for SPA)
+  allowed_oauth_scopes = ["openid", "email", "profile"]
+  
+  explicit_auth_flows = [
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_CUSTOM_AUTH"   # For magic link (custom challenge)
+  ]
 
-Migration path:
-1. Phase 1 (10K users): Redis cache. Pre-compute scores nightly. Invalidate on profile update.
-2. Phase 2 (100K users): pgvector ANN search reduces candidate set from 50K to 500, then apply rule-based scoring on shortlist.
-3. Phase 3 (500K+): ML matching model on SageMaker. Train on historical outcomes. Use 4-dimension scores as features alongside embeddings.
+  access_token_validity  = 15   # 15 minutes
+  refresh_token_validity = 7    # 7 days
+  prevent_user_existence_errors = "ENABLED"  # Security
+}
+```
 
-**Q2: How do you handle session plan AI generation failing?**
+**Application Code — JWT Token Handling:**
+```csharp
+// AuthEndpoints.cs — Token verification
+auth.MapPost("/verify-magic-link", async (VerifyMagicLinkRequest request, IMediator mediator) =>
+{
+    var command = new VerifyMagicLinkCommand(request.Email, request.Token);
+    var result = await mediator.Send(command, ct);
+    return result.IsSuccess
+        ? Results.Ok(result.Value)  // Returns { accessToken, refreshToken, idToken }
+        : Results.BadRequest(new { error = result.Error });
+});
+```
 
-Three layers of resilience exist today:
-1. SessionPlanPlugin retries up to 3 times with domain validation per attempt
-2. Polly v8 circuit breaker: 5 failures in 30s opens circuit for 60s
-3. Session transitions to Active without plan; UI shows retry button
-
-At enterprise scale add: template fallback, multi-model failover (Claude Haiku if Sonnet unavailable), DLQ for replay.
-
-**Q3: You migrated from DynamoDB to PostgreSQL. When would you migrate back?**
-
-DynamoDB wins when: write throughput exceeds Aurora 200K/sec limit, access patterns are purely key-value, Global Tables needed for multi-region active-active. The answer is polyglot persistence: hot path (locks, notifications) in DynamoDB, relational core (users, sessions, matching) in Aurora.
-
-### Category B: Data Drift and Schema Evolution
-
-**Q4: How do you handle schema evolution on JSONB session_plan?**
-
-1. Domain validation (SessionPlan.IsValid()) enforces invariants regardless of storage format
-2. Version field in JSONB, application handles multiple versions via pattern matching
-3. dbt data quality tests assert all plans pass validation
-4. EF Core migrations update JSONB in-place using jsonb_set() for breaking changes
-
-**Q5: GDPR right-to-deletion with engagement_events using user_id_hash?**
-
-user_id_hash is one-way SHA-256 (not reversible without salt). Delete user row from `users` (CASCADE). Hashed events remain for analytics but are unlinkable. This follows anonymisation-as-deletion precedent in GDPR Article 11.
-
-### Category C: High Availability and Failure Modes
-
-**Q6: 15-minute session lock during PostgreSQL failover?**
-
-Aurora failover takes 30-60 seconds. Lock writes fail with 503, client retries with backoff. Existing locks preserved (replicated before promotion). TTL expiry self-heals orphaned locks. At scale: move locks to DynamoDB (single-digit ms failover) or Redis SET NX EX.
-
-**Q7: Zero-downtime deployments?**
-
-1. Blue-green via EKS (traffic shift after health check)
-2. Database: expand-then-contract migrations (always backward-compatible)
-3. Feature flags: 10% canary, 50%, 100%
-4. API versioning: /v1/ and /v2/ coexist with deprecation headers
-
-### Category D: AI Infrastructure Deep-Dive
-
-**Q8: How do you prevent prompt injection in session plan generation?**
-
-Current: InputSanitizer.Sanitize() strips control characters, truncates, escapes special tokens.
-At scale: Bedrock Guardrails (content filters), input classification (pre-screen suspicious patterns), output validation (domain invariants as structural guardrail).
-
-**Q9: Real-time matching score updates when mentor updates profile?**
-
-1. MentorProfileUpdatedEvent raised (domain event)
-2. EventBridge routes to: Lambda (re-compute embeddings), Lambda (invalidate Redis), SQS (queue score recalculation)
-3. SignalR pushes updated scores to mentees on Browse page
-4. Total latency: under 5 seconds
-
-### Category E: Scale and Performance Curveballs
-
-**Q10: 100x traffic spike from AWS re:Invent Australia?**
-
-1. Aurora auto-scales ACUs within seconds; read replicas for browse
-2. Redis cache (60s TTL) absorbs repeated browse requests
-3. Lambda provisioned concurrency pre-warmed for known events
-4. API Gateway throttling at 10K req/sec; overflow to SQS
-5. Circuit breaker: serve cached results if matching service degrades
-6. Graceful degradation: disable real-time scores, show "as of 10 min ago"
-
-**Q11: How do you ensure the matching algorithm is fair and unbiased?**
-
-Current: transparent, deterministic, 4 fixed dimensions. Chapter gives location bonus but never excludes.
-At scale: bias testing across protected attributes, fairness metrics in MLflow (demographic parity), human-in-the-loop override always available.
-
-**Q12: SignalR at 500K concurrent connections?**
-
-Single-server cannot handle this. Migration: AWS AppSync (managed WebSocket), Redis backplane for distributed SignalR, connection sharding by chapter. Frontend already implements WebSocket to SSE to long-polling fallback cascade.
-
-**Q13: Complete data pipeline from user action to BI dashboard?**
-
-1. Mentee browses → engagement_events INSERT
-2. CDC → Kinesis Data Stream
-3. Kinesis → Lambda → S3 raw Parquet (partitioned by date/chapter)
-4. EventBridge triggers nightly dbt run
-5. dbt staging → intermediate → marts
-6. Redshift materialised views for dashboards
-7. QuickSight: "matching score vs session outcome" by chapter/month
-8. Latency: real-time capture, T+1 day for BI
+**Azure AD B2C Mapping:**
+| Concept | AWS Cognito (My Project) | Azure AD B2C |
+|---|---|---|
+| Identity Provider | Cognito User Pool | Azure AD B2C Tenant |
+| Custom Auth Flow | Custom Challenge Lambda | Custom Policies (IEF) |
+| Google Federation | Cognito Identity Provider | B2C Social Identity Provider |
+| JWT Validation | API Gateway Cognito Authorizer | Azure APIM JWT validation policy |
+| Token Refresh | ALLOW_REFRESH_TOKEN_AUTH | B2C refresh token flow |
+| OIDC Scopes | openid, email, profile | Same OIDC standard scopes |
 
 ---
 
-## Key Numbers to Memorise
+### Q7: Describe your experience with React.js and component-based architecture.
 
-| Metric | Value |
+**Answer:**
+
+GuidedMentor's frontend is a React 19 SPA with TypeScript, TanStack Query for server state, React Router v7 for routing, and Module Federation for micro-frontend architecture.
+
+**Project Example — App.tsx (Lazy Loading + Accessibility):**
+```tsx
+// Lazy-loaded routes (code-split per page)
+const MenteeDashboard = lazy(() => import('./pages/MenteeDashboard'));
+const SessionPlan = lazy(() => import('./pages/SessionPlan'));
+
+function App() {
+  return (
+    <>
+      {/* Skip-nav link for accessibility (WCAG 2.1 AA) */}
+      <a href="#main-content" className="sr-only focus:not-sr-only ...">
+        Skip to main content
+      </a>
+
+      <main id="main-content">
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/dashboard" element={<DashboardRouter />} />
+            <Route path="/sessions/:id/plan" element={<SessionPlan />} />
+          </Routes>
+        </Suspense>
+      </main>
+    </>
+  );
+}
+```
+
+**Custom Hooks Pattern:**
+```tsx
+// useOptimistic.ts — Optimistic UI updates with rollback
+export function useOptimisticToggle(serverState: boolean, updateFn: (v: boolean) => Promise<void>) {
+  const [optimistic, setOptimistic] = useState(serverState);
+  const toggle = useCallback(async () => {
+    setOptimistic(!optimistic);       // Optimistic update
+    try { await updateFn(!optimistic); }
+    catch { setOptimistic(serverState); }  // Rollback on failure
+  }, [optimistic, serverState, updateFn]);
+  return [optimistic, toggle] as const;
+}
+```
+
+---
+
+### Q8: How do you handle CI/CD pipelines? (Azure DevOps context)
+
+**Answer:**
+
+GuidedMentor uses GitHub Actions for CI/CD — the concepts map directly to Azure DevOps Pipelines.
+
+**Project Example — CI Pipeline with Coverage Gates:**
+```yaml
+# ci-dotnet.yml
+services:
+  postgres:
+    image: postgres:16
+    env:
+      POSTGRES_DB: guidedmentor_test
+
+steps:
+  - name: Run tests with coverage
+    run: dotnet test --collect:"XPlat Code Coverage"
+    
+  - name: Check coverage thresholds
+    run: |
+      # Domain/pure logic: ≥95% line coverage
+      # Application handlers: ≥80% line coverage
+      if [ "$DOMAIN_INT" -lt 95 ]; then
+        echo "::error::Domain coverage is ${DOMAIN_COV}% (minimum: 95%)"
+      fi
+```
+
+**Azure DevOps Mapping:**
+| GitHub Actions (My Project) | Azure DevOps Equivalent |
 |---|---|
-| Unit tests | 487+ (xUnit + FluentAssertions) |
-| Property-based tests | 35 x 100 iterations = 3,500 executions |
-| Bounded contexts | 4 (Identity, Mentoring, Content, Engagement) |
-| Terraform modules | 9 |
-| CI/CD workflows | 9 (GitHub Actions) |
-| Matching max score | 100 (Chapter 30 + Skills 30 + Goal 25 + Experience 15) |
-| Session plan | 35 min total, 3-7 items, min 3 min each |
-| Magic link TTL | 10 minutes, single-use, UUID 122-bit entropy |
-| JWT access | 15 minutes HMAC-SHA256 |
-| JWT refresh | 7 days rotating |
-| Rate limits | 100/min API, 3/15min magic link, 20/min AI |
-| Lock TTL | 15 minutes optimistic concurrency |
-| Completion flow | Mentee first, mentor confirms |
-
-## Architectural Principles to Reference
-
-1. **Dependency Inversion** — Domain has zero deps. Proved by DynamoDB to PostgreSQL swap with zero domain changes.
-2. **Result over Exceptions** — Business logic returns Result T, never throws. Exceptions for infrastructure only.
-3. **Deterministic Pure Functions** — MatchingEngine is static, stateless, side-effect-free. Enables property-based testing.
-4. **Event-Driven Cross-Context** — Bounded contexts communicate via domain events, never direct references.
-5. **Infrastructure Swap Proof** — IUserRepository fulfilled by PostgresUserRepository, InMemoryUserRepository, or DynamoDbUserRepository interchangeably.
+| `.github/workflows/*.yml` | `azure-pipelines.yml` |
+| `on: pull_request` | `trigger: branches` / `pr:` |
+| `services: postgres` | Service Containers in pipeline |
+| `actions/checkout@v4` | `- checkout: self` |
+| `hashicorp/setup-terraform@v3` | Terraform extension task |
+| GitHub Environments + Secrets | Variable Groups + Key Vault integration |
+| `workflow_dispatch` | Manual triggers / Approvals |
+| Matrix strategy | Strategy matrix in YAML |
 
 ---
 
-*Document generated for personal interview preparation. Reflects the GuidedMentor project architecture as built and its enterprise scale-out path.*
+### Q9: How do you handle background processing and scheduled tasks?
+
+**Answer:**
+
+GuidedMentor uses Hangfire (PostgreSQL-backed) for local development and AWS EventBridge Scheduler for production. The Azure equivalent is Azure Functions Timer Triggers or Azure Durable Functions.
+
+**Project Example — Hangfire Background Jobs:**
+```csharp
+// CleanupExpiredTokensJob.cs — Recurring every 5 minutes
+public sealed class CleanupExpiredTokensJob
+{
+    private readonly GuidedMentorDbContext _db;
+    private readonly ILogger<CleanupExpiredTokensJob> _logger;
+
+    public async Task ExecuteAsync()
+    {
+        _logger.LogInformation("Starting expired token cleanup job");
+        var deleted = await _db.AuthTokens
+            .Where(t => t.ExpiresAt < DateTime.UtcNow || t.Used)
+            .ExecuteDeleteAsync();
+        _logger.LogInformation("Cleaned up {Count} expired/used auth tokens", deleted);
+    }
+}
+
+// Registration in Program.cs
+RecurringJob.AddOrUpdate<CleanupExpiredTokensJob>(
+    "cleanup-tokens", j => j.ExecuteAsync(), "*/5 * * * *");
+RecurringJob.AddOrUpdate<OpportunityExpiryJob>(
+    "expire-opportunities", j => j.ExecuteAsync(), "0 0 * * *");
+```
+
+**Azure Mapping:**
+- **Azure Functions Timer Trigger** replaces EventBridge Scheduler (cron expressions are identical)
+- **Azure Durable Functions** for orchestration workflows (completion reminders, escalation chains)
+- **Azure Queue Storage / Service Bus** for fire-and-forget (replaces SQS)
+
+---
+
+### Q10: Explain your approach to Domain-Driven Design and Clean Architecture.
+
+**Answer:**
+
+GuidedMentor has four bounded contexts, each following strict layering:
+
+```
+src/
+├── Identity/           ← Bounded Context
+│   ├── Domain/         ← Zero dependencies, pure business logic
+│   ├── Application/    ← Commands, Queries, Handlers, Interfaces
+│   ├── Infrastructure/ ← EF Core repos, external services
+│   └── Api/            ← Minimal API endpoints (thin HTTP layer)
+├── Mentoring/
+├── Content/
+└── Engagement/
+```
+
+**Project Example — Aggregate Root with Domain Events:**
+```csharp
+// User.cs (Identity Domain)
+public sealed class User : AggregateRoot<UserId>
+{
+    public Result ToggleRole()
+    {
+        if (ActiveRole is null)
+            return Result.Failure("Cannot toggle role. No active role has been set.");
+
+        var previousRole = ActiveRole.Value;
+        ActiveRole = previousRole == Role.Mentor ? Role.Mentee : Role.Mentor;
+        
+        RaiseDomainEvent(new RoleToggledEvent(Id, previousRole, ActiveRole.Value, DateTime.UtcNow));
+        return Result.Success();
+    }
+}
+```
+
+**Key DDD Patterns:**
+- Aggregate roots enforce invariants (User can't toggle role without initial selection)
+- Domain events for cross-context side effects (RoleToggledEvent → Mentoring context updates)
+- Result pattern instead of exceptions for business logic failures
+- Repository per aggregate root, interface in Application, implementation in Infrastructure
+
+---
+
+### Q11: How do you ensure real-time communication in your application?
+
+**Answer:**
+
+GuidedMentor uses SignalR for real-time notifications. In Azure, this maps to Azure SignalR Service (managed WebSocket infrastructure).
+
+**Project Example — SignalR Hub:**
+```csharp
+// NotificationHub.cs
+public sealed class NotificationHub : Hub
+{
+    public override async Task OnConnectedAsync()
+    {
+        var userId = Context.UserIdentifier;  // From JWT claim
+        if (!string.IsNullOrEmpty(userId))
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
+        await base.OnConnectedAsync();
+    }
+}
+
+// Program.cs — Registration
+app.MapHub<NotificationHub>("/hubs/notifications");
+```
+
+**Azure SignalR Service Benefits:**
+- Managed infrastructure (no WebSocket server scaling concerns)
+- Azure AD authentication integration
+- Same `IHubContext<NotificationHub>` programming model
+- Serverless mode compatible with Azure Functions
+
+---
+
+### Q12: How do you validate inputs in your API?
+
+**Answer:**
+
+GuidedMentor uses FluentValidation with auto-discovery, executed in a MediatR pipeline behavior before the handler runs.
+
+**Project Example — Validation Pipeline:**
+```csharp
+// ValidationBehavior.cs — Runs BEFORE every handler
+public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+{
+    private readonly IEnumerable<IValidator<TRequest>> _validators;
+
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
+    {
+        var context = new ValidationContext<TRequest>(request);
+        var failures = (await Task.WhenAll(
+            _validators.Select(v => v.ValidateAsync(context, ct))))
+            .SelectMany(r => r.Errors).ToList();
+
+        if (failures.Count > 0)
+            throw new ValidationException(failures);
+
+        return await next();
+    }
+}
+
+// SetRoleCommandValidator.cs
+public sealed class SetRoleCommandValidator : AbstractValidator<SetRoleCommand>
+{
+    public SetRoleCommandValidator()
+    {
+        RuleFor(x => x.UserId).NotEmpty().WithMessage("UserId is required.");
+        RuleFor(x => x.Role).IsInEnum().WithMessage("Role must be Mentor or Mentee.");
+    }
+}
+```
+
+---
+
+### Q13: What is your experience with Next.js (SSR)?
+
+**Answer:**
+
+While GuidedMentor's frontend is a Vite-based SPA (React 19 + React Router), I understand Next.js patterns and can discuss the architectural tradeoffs:
+
+**What GuidedMentor Uses (SPA):**
+- React 19 with lazy loading (`React.lazy()` + `Suspense`)
+- Module Federation for micro-frontend architecture
+- MSW (Mock Service Worker) for API mocking during development
+- TanStack Query for server-state caching (similar to SWR in Next.js)
+
+**How I'd migrate to Next.js:**
+- Pages like `/browse` (mentor directory) → SSR for SEO and initial load performance
+- Dashboard pages → Client-side rendering (authenticated, no SEO needed)
+- Session plan generation → Server Actions for streaming AI responses
+- `usePrefetch` hook → Next.js `<Link prefetch>` (built-in)
+
+**Azure Hosting for Next.js:**
+- Azure Static Web Apps (supports Next.js SSR natively)
+- Azure App Service (custom Node.js container)
+- Vercel (GuidedMentor already has `.vercel/` configuration)
+
+---
+
+### Q14: How do you handle audit logging and observability?
+
+**Answer:**
+
+GuidedMentor has a cross-cutting audit logging pipeline that records who did what, when, and whether it succeeded.
+
+**Project Example — Audit Logging Behavior:**
+```csharp
+// AuditLoggingBehavior.cs
+public sealed class AuditLoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+{
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
+    {
+        if (request is not IAuditableCommand auditableCommand)
+            return await next();
+
+        // Records: who (userId), when (UTC), what (command type), which resource, correlationId
+        var record = new AuditLogRecord {
+            UserId = command.UserId.ToString(),
+            Action = typeof(TRequest).Name,
+            Resource = command.AuditResourceId,
+            CorrelationId = CorrelationContext.CurrentCorrelationId
+        };
+
+        // For admin operations, additionally log adminId, target, reason
+        if (command is IAdminCommand adminCommand)
+            record = record with { AdminId = adminCommand.AdminId.ToString() };
+
+        await _auditLogWriter.WriteAsync(record, ct);
+    }
+}
+```
+
+**Azure Mapping:**
+- CloudWatch → **Azure Monitor** (metrics + logs)
+- CloudWatch Log Groups → **Log Analytics Workspace**
+- X-Ray → **Application Insights** (distributed tracing)
+- `PerformanceBehavior` (>500ms warning) → App Insights **dependency tracking**
+
+---
+
+### Q15: How do you work in an Agile environment?
+
+**Answer:**
+
+GuidedMentor demonstrates Agile practices through:
+
+1. **Bounded context decomposition** — each context (Identity, Mentoring, Content, Engagement) maps to a team or sprint focus area
+2. **Feature flags** — `AddFeatureFlags(builder.Configuration)` enables trunk-based development with dark launches
+3. **CI gates** — every PR runs build + test + coverage checks automatically
+4. **Incremental delivery** — traffic shifting deploys (10% → 100%) allow safe, gradual rollouts
+5. **Infrastructure as Code** — Terraform plan on PR, apply on merge (reviewed like application code)
+6. **Observability-first** — `PerformanceBehavior` and audit logging enable data-driven sprint retrospectives
+
+**Azure DevOps Specific:**
+- Azure Boards for sprint planning and backlog management
+- Pull Request policies with required reviewers and build validation
+- Release pipelines with approval gates (staging → production)
+- Azure Test Plans for manual test scenarios
+
+---
+
+## Part 3: Quick-Fire Technical Differentiators
+
+| Topic | What to Say in Interview |
+|---|---|
+| **Architecture** | "Clean Architecture with DDD — 4 bounded contexts, MediatR CQRS, domain events for cross-context communication" |
+| **Error Handling** | "Result pattern for business logic, exceptions only for infrastructure failures, Polly v8 for resilience" |
+| **Security** | "Passwordless auth (magic link), OAuth 2.0 Authorization Code + PKCE, prevent user enumeration, WAF, CSP headers" |
+| **Testing** | "95% coverage on domain logic, 80% on handlers, property-based tests with FsCheck, E2E with Playwright" |
+| **Performance** | "Native AOT compilation, lazy-loaded React routes, EventBridge for async processing, CloudFront CDN" |
+| **Database** | "EF Core with PostgreSQL, JSONB for complex objects, repository pattern, separate persistence vs domain models" |
+| **DevOps** | "GitHub Actions CI/CD (Azure DevOps equivalent), Terraform IaC, traffic-shifting deploys, automated coverage gates" |
+
+---
+
+## Part 4: Questions to Ask the Interviewer
+
+1. "What Azure services does the team currently use for async messaging — Service Bus Topics or Event Grid?"
+2. "Are you using Azure AD B2C or a custom identity solution for authentication?"
+3. "How do you handle deployment strategies — App Service slots, AKS blue/green, or Azure Functions?"
+4. "What's the team's approach to Infrastructure as Code — ARM templates, Bicep, or Terraform?"
+5. "How is the codebase structured — monolith, modular monolith, or microservices?"
+
+
+---
+
+## Part 5: Key React & .NET Features Used in GuidedMentor (Interview Talking Points)
+
+---
+
+### React Key Features
+
+**1. React 19 with Functional Components Only**
+- Latest version, no class components — everything uses hooks
+- "We chose React 19 for the latest concurrent rendering capabilities and hook-based architecture"
+
+**2. Code Splitting with `React.lazy()` + `Suspense`**
+- Every page route is lazy-loaded — only downloads JS when the user navigates there
+- Reduces initial bundle size significantly for a multi-page app
+- "Like a buffet where dishes are cooked only when someone walks up to that station"
+
+**3. Module Federation (Micro-Frontend Architecture)**
+- 4 separate federated remotes: identity, mentoring, content, engagement
+- Host-shell orchestrates them — each team can deploy independently
+- Uses `@originjs/vite-plugin-federation`
+- "Like a shopping mall — each store (remote) operates independently, but they share the same building (host-shell)"
+
+**4. TanStack React Query (Server State Management)**
+- All API data fetching uses React Query — no `useEffect` for data
+- Automatic caching, background refetching, stale-while-revalidate
+- Separates server state from client state cleanly
+- "We don't use Redux or global state for API data — React Query handles caching, deduplication, and revalidation out of the box"
+
+**5. React Router DOM 7 (Client-Side Routing)**
+- Declarative routing with nested routes
+- Parameterized routes (`/sessions/:id/plan`)
+- Role-based routing logic (mentor vs mentee dashboard)
+
+**6. Context API for Auth State**
+- `AuthContext` provides user/role info across the component tree
+- Lightweight — no external state library needed for auth
+
+**7. TanStack Virtual (Virtualized Lists)**
+- Renders only visible items in long lists (mentor browse, notifications)
+- Handles thousands of items without DOM bloat
+- "Only the items in the viewport are rendered — scroll and items swap in/out"
+
+**8. MSW (Mock Service Worker)**
+- API mocking at the network level during development
+- Team can build frontend before backend is ready
+- Same mocks used in tests — no divergence
+
+**9. Vite 6 (Build Tooling)**
+- Native ES modules for instant HMR in development
+- Rollup-based production builds with tree-shaking
+- TailwindCSS 4 Vite plugin for zero-config CSS
+
+**10. Accessibility (WCAG 2.1 AA)**
+- Skip-nav link as first focusable element
+- Semantic HTML (`<nav>`, `<main>`, `<article>`)
+- `aria-live` for dynamic content, focus trapping in modals
+- axe-core in E2E tests (automated accessibility regression)
+
+**11. TypeScript 5.7 (Strict Mode)**
+- `noUncheckedIndexedAccess`, strict null checks
+- Catches entire categories of bugs at compile time
+
+**12. PWA Support**
+- Service worker for offline caching
+- Web app manifest for install-to-homescreen
+
+---
+
+### .NET Key Features
+
+**1. .NET 10 (LTS) + C# Latest**
+- Long-term support until 2028
+- Primary constructors, records, file-scoped namespaces, nullable reference types enforced as errors
+
+**2. ASP.NET Core Minimal APIs**
+- No controllers — endpoints mapped directly with `app.MapGet/Post()`
+- Less ceremony, better AOT compatibility, faster startup
+- "Like Express.js routing but with full type safety"
+
+**3. Clean Architecture (4 Layers)**
+- Domain → Application → Infrastructure → API
+- Dependency rule: inner layers never reference outer
+- Each bounded context (Identity, Mentoring, Content, Engagement) is independent
+
+**4. MediatR (CQRS Pattern)**
+- Commands separate writes from reads (queries)
+- Pipeline behaviors: Validation → Logging → Audit → Performance → Handler
+- Decouples HTTP layer from business logic entirely
+- "The API layer just wraps the request and sends it — doesn't know how it's handled"
+
+**5. FluentValidation**
+- Declarative rules for every command/query
+- Auto-discovered per assembly — no manual registration
+- Runs in MediatR pipeline before the handler executes
+
+**6. Result Pattern (No-Exception Business Logic)**
+- Handlers return `Result<T>` instead of throwing
+- Exceptions reserved for infrastructure failures only
+- API maps Result to appropriate HTTP status codes
+
+**7. Entity Framework Core + PostgreSQL (Npgsql)**
+- Code-first with migrations
+- JSONB columns for nested data, TEXT[] for arrays
+- Separate persistence models from domain entities (no leaky abstraction)
+
+**8. Repository Pattern**
+- Interface in Application layer, implementation in Infrastructure
+- One repository per aggregate root
+- Returns domain entities, never DTOs
+
+**9. SignalR (Real-Time Notifications)**
+- WebSocket hub at `/hubs/notifications`
+- Pushes session updates, match notifications instantly
+- Fallback to long-polling if WebSocket fails
+
+**10. Hangfire (Background Jobs)**
+- PostgreSQL-backed job storage
+- Recurring jobs: token cleanup (every 5 min), notification digests, availability reminders
+- Fire-and-forget for async email sends
+
+**11. Polly 8 (Resilience)**
+- Retry policies for HTTP calls (Bedrock API, external services)
+- Circuit breaker, timeout, bulkhead isolation
+- No manual retry loops — declarative pipeline
+
+**12. Passwordless Auth (Magic Link + JWT)**
+- Self-issued JWT tokens, 10-minute TTL, single-use
+- No passwords stored anywhere
+- Rate-limited (3 per email per 15 min), constant-time response to prevent enumeration
+
+**13. OpenTelemetry (Observability)**
+- Distributed tracing across all API calls
+- OTLP exporter for traces + metrics
+- ASP.NET Core + HTTP client instrumentation auto-wired
+
+**14. Serilog (Structured Logging)**
+- Compact JSON format for machine parsing
+- Correlation IDs across requests
+- Context-enriched logs (user ID, session ID, bounded context)
+
+**15. Native AOT Readiness**
+- `System.Text.Json` source generation (no reflection)
+- No dynamic proxies
+- Ready to compile AOT for sub-100ms Lambda cold starts
+
+**16. OpenAPI + Scalar**
+- Auto-generated API documentation from endpoints
+- Scalar UI (modern replacement for Swagger UI)
+- Spec used for client SDK generation
+
+**17. Domain-Driven Design**
+- Aggregate roots enforce invariants
+- Value objects for type safety (UserId, SessionId)
+- Domain events for cross-context side effects via MediatR notifications
+
+**18. Feature Flags (AWS AppConfig)**
+- Runtime feature toggling without redeployment
+- Gradual rollouts, A/B testing capability
+
+---
+
+### How to Frame in an Interview
+
+When asked "What tech stack did you use?", structure it as:
+
+> "The frontend is React 19 with TypeScript, using a micro-frontend architecture via Module Federation. We use TanStack Query for server state, React Router for navigation, and everything is code-split with lazy loading. The backend is .NET 10 with Clean Architecture — MediatR for CQRS, FluentValidation in the pipeline, EF Core with PostgreSQL, SignalR for real-time, and Hangfire for background jobs. We chose the Result pattern over exceptions for predictable error handling, and the whole system is observable with OpenTelemetry and Serilog."
+
+When asked "Why did you choose X?", always answer with:
+1. The **problem** it solves
+2. What the **alternative** was
+3. The **tradeoff** you accepted

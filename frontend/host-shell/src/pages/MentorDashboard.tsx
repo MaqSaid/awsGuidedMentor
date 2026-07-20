@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ScoreRing } from '../components/ScoreRing';
 import { DashboardSkeleton } from '../components/Skeleton';
+import { apiUrl } from '../lib/api';
 
 interface MenteeCardData {
   menteeId: string;
@@ -71,7 +72,7 @@ export default function MentorDashboard() {
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch('/v1/dashboard/mentor')
+    fetch(apiUrl('/v1/dashboard/mentor'))
       .then((r) => r.json())
       .then((d) => setData(d as MentorDashData));
   }, []);

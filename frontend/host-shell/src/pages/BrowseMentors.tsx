@@ -1,6 +1,7 @@
 import { useEffect, useState, useDeferredValue, useMemo, memo } from 'react';
 import { ScoreRing } from '../components/ScoreRing';
 import { BrowseSkeleton } from '../components/Skeleton';
+import { apiUrl } from '../lib/api';
 
 interface Mentor {
   mentorId: string;
@@ -97,7 +98,7 @@ export default function BrowseMentors() {
   const hasActiveMentor = true; // Demo: user already has a mentor
 
   useEffect(() => {
-    fetch('/v1/mentors')
+    fetch(apiUrl('/v1/mentors'))
       .then((r) => r.json())
       .then((d) => setData(d as MentorsResponse));
   }, []);

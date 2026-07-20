@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ScoreRing } from '../components/ScoreRing';
 import { SessionPlanSkeleton } from '../components/Skeleton';
+import { apiUrl } from '../lib/api';
 
 interface AgendaItem {
   timeRange: string;
@@ -45,7 +46,7 @@ export default function SessionPlan() {
   const [data, setData] = useState<PlanData | null>(null);
 
   useEffect(() => {
-    fetch(`/v1/sessions/${id ?? 'session-001'}/plan`)
+    fetch(apiUrl(`/v1/sessions/${id ?? 'session-001'}/plan`))
       .then((r) => r.json())
       .then((d) => setData(d as PlanData));
   }, [id]);

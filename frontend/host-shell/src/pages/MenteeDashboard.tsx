@@ -4,6 +4,7 @@ import { ScoreRing } from '../components/ScoreRing';
 import { DashboardSkeleton } from '../components/Skeleton';
 import { useViewTransition } from '../hooks/useViewTransition';
 import { usePrefetch } from '../hooks/usePrefetch';
+import { apiUrl } from '../lib/api';
 
 interface DashboardData {
   topMatch: number;
@@ -35,7 +36,7 @@ export default function MenteeDashboard() {
   const { prefetch, cancelPrefetch } = usePrefetch();
 
   useEffect(() => {
-    fetch('/v1/dashboard/mentee')
+    fetch(apiUrl('/v1/dashboard/mentee'))
       .then((r) => r.json())
       .then((d) => setData(d as DashboardData));
   }, []);

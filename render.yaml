@@ -1,0 +1,38 @@
+# ==============================================================================
+# Render Blueprint — Infrastructure as Code
+# Render auto-detects this file and configures your service.
+# ==============================================================================
+
+services:
+  - type: web
+    name: guidedmentor-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: free
+    healthCheckPath: /v1/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false  # Set manually in Render dashboard (Neon connection string)
+      - key: Jwt__Secret
+        sync: false  # Set manually — generate a 32+ char secret
+      - key: Jwt__Issuer
+        value: GuidedMentor
+      - key: Jwt__Audience
+        value: GuidedMentor
+      - key: Email__SmtpHost
+        value: smtp.gmail.com
+      - key: Email__SmtpPort
+        value: "587"
+      - key: Email__Username
+        sync: false  # Set manually — your Gmail address
+      - key: Email__Password
+        sync: false  # Set manually — Gmail app password
+      - key: Email__FromAddress
+        sync: false  # Set manually — your Gmail address
+      - key: Email__FromName
+        value: GuidedMentor
+      - key: CORS__AllowedOrigins
+        sync: false  # Set manually — your Cloudflare Pages URL (e.g., https://guidedmentor.pages.dev)

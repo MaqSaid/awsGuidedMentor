@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { apiUrl } from '../lib/api';
 
 /**
  * usePrefetch — preloads data when user hovers over a link.
@@ -15,7 +16,7 @@ export function usePrefetch() {
 
     // Delay 150ms to avoid prefetching on accidental hover
     timerRef.current = setTimeout(() => {
-      const promise = fetch(url).then(r => r.json()).catch(() => null);
+      const promise = fetch(apiUrl(url)).then(r => r.json()).catch(() => null);
       prefetchCache.set(url, promise);
     }, 150);
   }, []);

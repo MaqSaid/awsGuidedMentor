@@ -100,24 +100,60 @@ builder.Services.AddEngagementHelpAssistant(builder.Configuration);
 // Health checks
 builder.Services.AddHealthChecks();
 
-// CORS for frontend (localhost:3000-3004)
+// CORS — configurable for production (Cloudflare Pages URL) and local dev
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:3001",
-                "http://localhost:3002",
-                "http://localhost:3003",
-                "http://localhost:3004")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials());
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins(
+                    "http://localhost:3000",
+                    "http://localhost:3001",
+                    "http://localhost:3002",
+                    "http://localhost:3003",
+                    "http://localhost:3004")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            var allowedOrigins = builder.Configuration["CORS:AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                ?? ["https://guidedmentor.pages.dev"];
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+    });
 });
 
-// Mock authentication (accepts any Bearer token as valid)
-builder.Services.AddAuthentication("DevScheme")
-    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevAuthHandler>("DevScheme", null);
+// Authentication — real JWT in production, mock in development
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddAuthentication("DevScheme")
+        .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevAuthHandler>("DevScheme", null);
+}
+else
+{
+    var jwtSecret = builder.Configuration["Jwt:Secret"]!;
+    builder.Services.AddAuthentication("Bearer")
+        .AddJwtBearer("Bearer", options =>
+        {
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                ValidAudience = builder.Configuration["Jwt:Audience"],
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                    System.Text.Encoding.UTF8.GetBytes(jwtSecret)),
+            };
+        });
+}
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -133,7 +169,7 @@ app.MapOpenApi();
 app.MapScalarApiReference();
 
 // Health check
-app.MapGet("/v1/health", () => Results.Ok(new { status = "healthy", environment = "local-dev" }));
+app.MapGet("/v1/health", (IWebHostEnvironment env) => Results.Ok(new { status = "healthy", environment = env.EnvironmentName }));
 
 // SignalR notification hub
 app.MapHub<NotificationHub>("/hubs/notifications");
@@ -221,14 +257,23 @@ app.MapPost("/v1/assistant/chat", async (
 .WithName("ChatAssistantLocal")
 .WithTags("Assistant");
 
-Console.WriteLine("=== GuidedMentor Local Dev Server ===");
-Console.WriteLine("API:        http://localhost:5000");
-Console.WriteLine("Docs:       http://localhost:5000/scalar/v1");
-Console.WriteLine("OpenAPI:    http://localhost:5000/openapi/v1.json");
-Console.WriteLine("PostgreSQL: localhost:5432");
-Console.WriteLine("=====================================");
-
-app.Run("http://localhost:5000");
+if (app.Environment.IsDevelopment())
+{
+    Console.WriteLine("=== GuidedMentor Local Dev Server ===");
+    Console.WriteLine("API:        http://localhost:5000");
+    Console.WriteLine("Docs:       http://localhost:5000/scalar/v1");
+    Console.WriteLine("OpenAPI:    http://localhost:5000/openapi/v1.json");
+    Console.WriteLine("PostgreSQL: localhost:5432");
+    Console.WriteLine("=====================================");
+    app.Run("http://localhost:5000");
+}
+else
+{
+    // Production — Render sets PORT env variable
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+    Console.WriteLine($"=== GuidedMentor Production Server (port {port}) ===");
+    app.Run($"http://0.0.0.0:{port}");
+}
 
 // ========== Supporting Records ==========
 sealed record ChatRequest(string? Message, List<ChatHistoryItem>? History);

@@ -1,6 +1,7 @@
 import { useState, useCallback, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../providers/AuthProvider';
+import { apiUrl } from '../lib/api';
 
 type LoginState = 'idle' | 'loading' | 'sent' | 'error';
 
@@ -21,7 +22,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('/v1/auth/magic-link', {
+      const response = await fetch(apiUrl('/v1/auth/magic-link'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

@@ -1,6 +1,7 @@
 import { useEffect, useState, useContext, useCallback } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../providers/AuthProvider';
+import { apiUrl } from '../lib/api';
 
 type VerifyState = 'verifying' | 'success' | 'error';
 
@@ -22,7 +23,7 @@ export default function VerifyMagicLink() {
     }
 
     try {
-      const response = await fetch('/v1/auth/verify-magic-link', {
+      const response = await fetch(apiUrl('/v1/auth/verify-magic-link'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, token }),

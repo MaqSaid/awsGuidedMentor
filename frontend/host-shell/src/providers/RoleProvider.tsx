@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { AuthContext, type Role } from './AuthProvider';
 import { useContext } from 'react';
+import { apiUrl } from '../lib/api';
 
 /**
  * RoleProvider — Active role context with optimistic toggle.
@@ -45,7 +46,7 @@ export function RoleProvider({ children }: RoleProviderProps) {
     auth.updateUser({ activeRole: newRole });
 
     try {
-      const response = await fetch('/v1/users/toggle-role', {
+      const response = await fetch(apiUrl('/v1/users/toggle-role'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
