@@ -20,9 +20,9 @@ function renderNavBar(authOverrides: Partial<AuthContextValue> = {}) {
 
   return render(
     <MemoryRouter>
-      <AuthContext.Provider value={defaultAuth}>
+      <AuthContext value={defaultAuth}>
         <NavBar />
-      </AuthContext.Provider>
+      </AuthContext>
     </MemoryRouter>
   );
 }

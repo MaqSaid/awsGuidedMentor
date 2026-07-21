@@ -181,5 +181,5 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [accessToken, refreshToken, isAuthenticated, user, login, logout, refreshAccessToken, updateUser]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext value={value}>{children}</AuthContext>;
 }

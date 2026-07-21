@@ -30,6 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GuidedMentor.SharedKernel\GuidedMentor.SharedKernel.csproj" />
     <ProjectReference Include="..\GuidedMentor.Observability\GuidedMentor.Observability.csproj" />
+    <ProjectReference Include="..\..\Mentoring\GuidedMentor.Mentoring.Application\GuidedMentor.Mentoring.Application.csproj" />
   </ItemGroup>
 
 </Project>

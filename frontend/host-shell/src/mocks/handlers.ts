@@ -212,6 +212,10 @@ const mentorDashboard = {
 
 /* ─── Handlers ─── */
 
+// Stateful tracking for demo interactions
+let sessionCompleted = false;
+const bookedSessions: Array<{ sessionId: string; mentorId: string; date: string }> = [];
+
 export const handlers = [
   // Auth
   http.post('/v1/auth/refresh', () => {
@@ -263,13 +267,30 @@ export const handlers = [
     chapter: 'GDG Melbourne',
   })),
 
-  // Session plan
-  http.get('/v1/sessions/:sessionId/plan', () => HttpResponse.json(sessionPlan)),
+  // Session plan — returns updated status based on state
+  http.get('/v1/sessions/:sessionId/plan', () => HttpResponse.json({
+    ...sessionPlan,
+    status: sessionCompleted ? 'completed' : 'active',
+    bookedSessions: bookedSessions.map(b => ({
+      sessionId: b.sessionId,
+      mentor: sessionPlan.mentor,
+      date: b.date,
+      pending: false,
+    })),
+  })),
 
-  // Mark session complete
-  http.post('/v1/sessions/:sessionId/complete', () =>
-    HttpResponse.json({ success: true })
-  ),
+  // Mark session complete — updates stateful flag
+  http.post('/v1/sessions/:sessionId/complete', () => {
+    sessionCompleted = true;
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Book a session — adds to stateful list
+  http.post('/v1/sessions/book', async ({ request }) => {
+    const body = await request.json() as { sessionId: string; mentorId: string; date: string };
+    bookedSessions.push(body);
+    return HttpResponse.json({ success: true, sessionId: body.sessionId });
+  }),
 
   // Onboarding
   http.post('/v1/onboarding/mentee', () => HttpResponse.json({ success: true })),

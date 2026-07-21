@@ -2,6 +2,8 @@ import { lazy, Suspense, useContext } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthContext } from './providers/AuthProvider';
 import { NavBar } from './components/NavBar';
+import { AiHelpChat } from './components/AiHelpChat';
+import { OnboardingTour } from './components/OnboardingTour';
 import LandingPage from './pages/LandingPage';
 
 // Lazy-loaded routes (code-split per page)
@@ -73,6 +75,12 @@ function App() {
           </Routes>
         </Suspense>
       </main>
+
+      {/* Floating AI Help chat — all authenticated pages */}
+      {showNav && <AiHelpChat />}
+
+      {/* Onboarding Tour — triggers after first onboarding completion */}
+      {showNav && <OnboardingTour />}
     </>
   );
 }

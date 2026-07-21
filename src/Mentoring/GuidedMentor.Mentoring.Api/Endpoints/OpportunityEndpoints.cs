@@ -99,10 +99,10 @@ public static class OpportunityEndpoints
         string? location,
         string? skills,
         string? experience,
-        int page,
-        int pageSize,
-        IMediator mediator,
-        CancellationToken ct)
+        int page = 1,
+        int pageSize = 12,
+        IMediator mediator = default!,
+        CancellationToken ct = default)
     {
         OpportunityType? typeFilter = null;
         if (type is not null && Enum.TryParse<OpportunityType>(type, ignoreCase: true, out var parsedType))

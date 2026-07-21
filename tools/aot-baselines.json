@@ -1,0 +1,11 @@
+{
+  "baselines": [
+    {
+      "functionName": "GuidedMentor.BackgroundJobs",
+      "projectPath": "src/BackgroundJobs/GuidedMentor.BackgroundJobs/GuidedMentor.BackgroundJobs.csproj",
+      "baselineMb": 0,
+      "recordedAt": null,
+      "sdkVersion": "10.0.301"
+    }
+  ]
+}

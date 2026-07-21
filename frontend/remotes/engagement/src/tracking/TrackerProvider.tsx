@@ -83,7 +83,7 @@ export function TrackerProvider({
   );
 
   return (
-    <TrackerContext.Provider value={value}>{children}</TrackerContext.Provider>
+    <TrackerContext value={value}>{children}</TrackerContext>
   );
 }
 

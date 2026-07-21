@@ -1,6 +1,8 @@
 import { useContext, useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../providers/AuthProvider';
+import { usePreloadRemote } from '../hooks/usePreloadRemote';
+import { REMOTE_ENTRIES } from '../lib/remote-entries';
 
 export function NavBar() {
   const auth = useContext(AuthContext);
@@ -8,6 +10,11 @@ export function NavBar() {
   const isAuthenticated = auth?.isAuthenticated ?? false;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+
+  // Preload handlers for federated remote routes
+  const browsePreload = usePreloadRemote(REMOTE_ENTRIES['/browse']!);
+  const opportunitiesPreload = usePreloadRemote(REMOTE_ENTRIES['/opportunities']!);
+  const notificationsPreload = usePreloadRemote(REMOTE_ENTRIES['/notifications']!);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -39,7 +46,7 @@ export function NavBar() {
       className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border bg-bg-primary/80 backdrop-blur-md sticky top-0 z-50"
       aria-label="Main navigation"
     >
-      <Link to="/" className="text-xl font-bold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+      <Link to="/" className="text-xl font-bold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }} data-tour="dashboard">
         <span className="text-text-primary">Guided</span>
         <span className="gradient-text">Mentor</span>
       </Link>
@@ -51,6 +58,7 @@ export function NavBar() {
           <button
             className="relative p-2 rounded-lg hover:bg-white/5 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Notifications"
+            data-tour="notifications"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-text-secondary">
               <path
@@ -167,9 +175,9 @@ export function NavBar() {
                   </div>
 
                   <MobileNavLink to="/" label="Dashboard" />
-                  <MobileNavLink to="/browse" label="Browse Mentors" />
-                  <MobileNavLink to="/opportunities" label="Opportunities" />
-                  <MobileNavLink to="/notifications" label="Notifications" />
+                  <MobileNavLink to="/browse" label="Browse Mentors" data-tour="browse" {...browsePreload} />
+                  <MobileNavLink to="/opportunities" label="Opportunities" {...opportunitiesPreload} />
+                  <MobileNavLink to="/notifications" label="Notifications" {...notificationsPreload} />
                 </>
               ) : (
                 <>
@@ -188,11 +196,26 @@ export function NavBar() {
   );
 }
 
-function MobileNavLink({ to, label }: { to: string; label: string }) {
+interface MobileNavLinkProps {
+  to: string;
+  label: string;
+  'data-tour'?: string;
+  onMouseEnter?: () => void;
+  onFocus?: () => void;
+  onMouseLeave?: () => void;
+  onBlur?: () => void;
+}
+
+function MobileNavLink({ to, label, 'data-tour': dataTour, onMouseEnter, onFocus, onMouseLeave, onBlur }: MobileNavLinkProps) {
   return (
     <Link
       to={to}
       className="flex items-center min-h-[44px] px-3 py-3 rounded-lg text-text-primary hover:bg-white/5 transition-colors text-sm font-medium"
+      onMouseEnter={onMouseEnter}
+      onFocus={onFocus}
+      onMouseLeave={onMouseLeave}
+      onBlur={onBlur}
+      data-tour={dataTour}
     >
       {label}
     </Link>

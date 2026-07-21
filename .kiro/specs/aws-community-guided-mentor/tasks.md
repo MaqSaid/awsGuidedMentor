@@ -550,7 +550,7 @@ This implementation plan covers the full-stack build of the GuidedMentor AI-powe
     - Create security-scan.yml: OWASP ZAP + NuGet Audit + npm audit
     - _Requirements: 23.2, 23.3, 23.4, 23.5, 23.7_
 
-  - [~] 13.5 Implement background jobs and event-driven handlers
+  - [x] 13.5 Implement background jobs and event-driven handlers
     - Implement DynamoDB Streams → Aurora replication Lambda (analytics data sync)
     - Implement 7-day completion reminder event handler
     - Implement 14-day escalation event handler (set unresolved, notify both)
@@ -573,7 +573,7 @@ This implementation plan covers the full-stack build of the GuidedMentor AI-powe
     - Verify SOLID: all Domain classes implement at most 1 interface (ISP), all repo interfaces in Domain (DIP), all handlers have single Handle method (SRP)
     - _Requirements: 27.1, 27.2, 27.5_
 
-  - [~] 13.8 Implement guided help flow and UX polish
+  - [x] 13.8 Implement guided help flow and UX polish
     - Implement inline real-time validation (300ms debounce) on all form fields with tooltips explaining constraints
     - Implement confirmation dialogs for destructive actions (decline mentee, cancel session, delete profile)
     - Implement empty state guidance on all pages (clear instructions + CTA buttons)
@@ -657,7 +657,7 @@ This implementation plan covers the full-stack build of the GuidedMentor AI-powe
     - Verify 200% zoom without overflow or functionality loss
     - _Requirements: 18.5, 18.6, 18.7, 18.8, 25.1, 25.3_
 
-  - [~] 15.8 Final integration wiring and deployment verification
+  - [x] 15.8 Final integration wiring and deployment verification
     - Verify all Module Federation remotes load correctly in host shell
     - Verify API Gateway routes map to correct Lambda handlers across all 4 contexts
     - Verify AppSync subscriptions deliver real-time notifications end-to-end

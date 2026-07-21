@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using GuidedMentor.Content.Application.Interfaces;
 using GuidedMentor.Content.Infrastructure.Repositories;
@@ -13,6 +15,7 @@ using GuidedMentor.Engagement.Application;
 using GuidedMentor.Engagement.Application.Services;
 using GuidedMentor.LocalDev.Mocks;
 using GuidedMentor.SharedInfrastructure.Data;
+using GuidedMentor.SharedInfrastructure.Data.Entities;
 using GuidedMentor.SharedInfrastructure.Email;
 using GuidedMentor.SharedInfrastructure.FeatureFlags;
 using GuidedMentor.SharedInfrastructure.HealthChecks;
@@ -25,6 +28,13 @@ using Microsoft.Extensions.AI;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Disable strict DI validation in dev (some handlers have unregistered optional dependencies)
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = false;
+    options.ValidateOnBuild = false;
+});
 
 // ========== Configure Services ==========
 
@@ -56,21 +66,49 @@ builder.Services.AddScoped<GuidedMentor.Identity.Domain.Repositories.IUserReposi
 builder.Services.AddScoped<GuidedMentor.Identity.Application.Interfaces.IUserRepository>(sp => sp.GetRequiredService<PostgresUserRepository>());
 builder.Services.AddScoped<IMagicLinkService, PostgresMagicLinkService>();
 
+// Onboarding repositories (in-memory for local dev)
+builder.Services.AddSingleton<GuidedMentor.Identity.Application.Interfaces.IOnboardingProgressRepository,
+    MockOnboardingProgressRepository>();
+builder.Services.AddSingleton<GuidedMentor.Identity.Application.Interfaces.IMenteeProfileRepository,
+    MockMenteeProfileRepository>();
+builder.Services.AddSingleton<GuidedMentor.Identity.Application.Interfaces.IMentorProfileRepository,
+    MockMentorProfileRepository>();
+
 // Mentoring repositories
 builder.Services.AddScoped<IMentorRepository, PostgresMentorRepository>();
 builder.Services.AddScoped<IMenteeRepository, PostgresMenteeRepository>();
 builder.Services.AddScoped<ISessionRepository, PostgresSessionRepository>();
 builder.Services.AddScoped<IOpportunityRepository, PostgresOpportunityRepository>();
+builder.Services.AddSingleton<IMentoringNotificationPublisher, MockNotificationPublisher>();
 
 // Content repositories
 builder.Services.AddScoped<ISessionPlanRepository, PostgresSessionPlanRepository>();
+
+// Engagement repositories (PostgreSQL-backed no-op implementations)
+builder.Services.AddScoped<GuidedMentor.Engagement.Domain.Repositories.INotificationRepository,
+    GuidedMentor.Engagement.Infrastructure.Persistence.PostgresNotificationRepository>();
+builder.Services.AddScoped<GuidedMentor.Engagement.Domain.Repositories.IConsentRepository,
+    GuidedMentor.Engagement.Infrastructure.Repositories.PostgresConsentRepository>();
+builder.Services.AddScoped<GuidedMentor.Engagement.Domain.Repositories.IEngagementEventRepository,
+    GuidedMentor.Engagement.Infrastructure.Repositories.PostgresEngagementEventRepository>();
+builder.Services.AddScoped<GuidedMentor.Engagement.Application.Interfaces.IAppSyncNotificationPublisher,
+    GuidedMentor.Engagement.Infrastructure.RealTime.NoOpNotificationPublisher>();
+
+// Analytics repository (mock — returns sample data without Aurora)
+builder.Services.AddSingleton<GuidedMentor.Engagement.Application.Interfaces.IAnalyticsRepository,
+    MockAnalyticsRepository>();
+
+// EventBridge publisher (mock — logs events to console)
+builder.Services.AddSingleton<GuidedMentor.Mentoring.Application.Interfaces.IEventBridgePublisher,
+    MockEventBridgePublisher>();
 
 // SignalR for real-time notifications
 builder.Services.AddSignalR();
 
 // Hangfire background jobs
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-builder.Services.AddHangfire(config => config.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString)));
+var hangfireConnectionString = "Server=localhost;Port=5432;Database=guidedmentor;User Id=dev;Password=dev";
+builder.Services.AddHangfire(config => config.UsePostgreSqlStorage(options =>
+    options.UseNpgsqlConnection(hangfireConnectionString)));
 builder.Services.AddHangfireServer();
 
 // Mock AI client (canned responses — zero tokens consumed)
@@ -90,6 +128,7 @@ builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(GuidedMentor.Identity.Application.IdentityApplicationMarker).Assembly);
     cfg.RegisterServicesFromAssembly(typeof(GuidedMentor.Mentoring.Application.MentoringApplicationMarker).Assembly);
+    cfg.RegisterServicesFromAssembly(typeof(GuidedMentor.Mentoring.Api.Handlers.BrowseMentorsHandler).Assembly);
     cfg.RegisterServicesFromAssembly(typeof(GuidedMentor.Content.Application.Commands.GenerateSessionPlanCommand).Assembly);
     cfg.RegisterServicesFromAssembly(typeof(GuidedMentor.Engagement.Application.Commands.Notifications.CreateNotificationCommand).Assembly);
 });
@@ -174,9 +213,13 @@ app.MapGet("/v1/health", (IWebHostEnvironment env) => Results.Ok(new { status = 
 // SignalR notification hub
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Hangfire recurring jobs
-RecurringJob.AddOrUpdate<CleanupExpiredTokensJob>("cleanup-tokens", j => j.ExecuteAsync(), "*/5 * * * *");
-RecurringJob.AddOrUpdate<OpportunityExpiryJob>("expire-opportunities", j => j.ExecuteAsync(), "0 0 * * *");
+// Hangfire recurring jobs (use service-based API, not static)
+var jobManager = app.Services.GetRequiredService<IRecurringJobManager>();
+jobManager.AddOrUpdate<CleanupExpiredTokensJob>("cleanup-tokens", j => j.ExecuteAsync(), "*/5 * * * *");
+jobManager.AddOrUpdate<OpportunityExpiryJob>("expire-opportunities", j => j.ExecuteAsync(), "0 0 * * *");
+jobManager.AddOrUpdate<LockExpiryJob>("expire-locks", j => j.ExecuteAsync(), "*/5 * * * *");
+jobManager.AddOrUpdate<SessionEscalationJob>("escalate-sessions", j => j.ExecuteAsync(), "0 0 * * *");
+jobManager.AddOrUpdate<CompletionReminderJob>("completion-reminders", j => j.ExecuteAsync(), "0 0 * * *");
 
 // ========== Map ALL bounded context endpoints ==========
 
@@ -219,6 +262,40 @@ app.MapGet("/v1/dashboard/mentee", () => Results.Ok(MockDashboards.GetMenteeDash
 app.MapGet("/v1/dashboard/mentor", () => Results.Ok(MockDashboards.GetMentorDashboard()))
     .WithName("MentorDashboardLocal")
     .WithTags("Dashboard");
+
+// Meetups endpoint (inline — queries PostgreSQL meetups table)
+app.MapGet("/v1/meetups", async (GuidedMentorDbContext db, string? chapter, CancellationToken ct) =>
+{
+    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+    var query = db.Meetups
+        .Where(m => !m.IsCancelled && m.EventDate >= today);
+
+    if (!string.IsNullOrWhiteSpace(chapter))
+        query = query.Where(m => m.Chapter == chapter);
+
+    var meetups = await query
+        .OrderBy(m => m.EventDate)
+        .ThenBy(m => m.StartTime)
+        .Select(m => new
+        {
+            m.Id,
+            m.Chapter,
+            m.Title,
+            m.EventDate,
+            m.StartTime,
+            m.EndTime,
+            m.VenueName,
+            m.VenueAddress,
+            m.EventUrl,
+            m.CreatedBy,
+            AttendeeCount = m.ConfirmedAttendees.Length
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(meetups);
+})
+.WithName("GetMeetupsLocal")
+.WithTags("Meetups");
 
 // AI Help Assistant (real FAQ + mock Bedrock)
 app.MapPost("/v1/assistant/chat", async (

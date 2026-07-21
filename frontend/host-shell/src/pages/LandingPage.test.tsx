@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import { describe, it, expect } from 'vitest';
@@ -59,7 +60,8 @@ describe('LandingPage', () => {
 
   it('has proper link targets for CTAs', () => {
     renderLandingPage();
-    const menteeLink = screen.getByRole('link', { name: /mentee/i });
-    expect(menteeLink).toHaveAttribute('href', '/role-select');
+    const menteeLinks = screen.getAllByRole('link', { name: /mentee/i });
+    expect(menteeLinks.length).toBeGreaterThan(0);
+    expect(menteeLinks[0]).toHaveAttribute('href', '/role-select');
   });
 });

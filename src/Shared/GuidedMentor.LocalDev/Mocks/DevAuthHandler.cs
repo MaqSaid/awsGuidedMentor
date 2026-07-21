@@ -42,6 +42,22 @@ public sealed class DevAuthHandler : AuthenticationHandler<AuthenticationSchemeO
                 displayName = "Admin User";
                 role = "admin";
             }
+            else if (token.Split('.') is { Length: 3 } parts)
+            {
+                // Try to parse a fake JWT payload (dev quick login)
+                try
+                {
+                    var payload = System.Text.Json.JsonDocument.Parse(
+                        Convert.FromBase64String(parts[1] + new string('=', (4 - parts[1].Length % 4) % 4)));
+                    if (payload.RootElement.TryGetProperty("sub", out var sub))
+                        userId = sub.GetString() ?? userId;
+                    if (payload.RootElement.TryGetProperty("name", out var name))
+                        displayName = name.GetString() ?? displayName;
+                    if (payload.RootElement.TryGetProperty("role", out var r))
+                        role = r.GetString() ?? role;
+                }
+                catch { /* Invalid JWT format — use defaults */ }
+            }
         }
 
         var claims = new[]

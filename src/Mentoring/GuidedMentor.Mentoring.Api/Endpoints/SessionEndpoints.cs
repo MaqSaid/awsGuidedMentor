@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using GuidedMentor.Mentoring.Application.Commands.Sessions;
 using System.Security.Claims;
 
@@ -88,18 +89,49 @@ public static class SessionEndpoints
         // POST /v1/sessions/{sessionId}/complete — Mark session as complete (mentee first, then mentor confirms)
         group.MapPost("/{sessionId:guid}/complete", async (
             Guid sessionId,
-            MarkCompleteRequest request,
+            MarkCompleteRequest? request,
             HttpContext httpContext,
             IMediator mediator,
+            GuidedMentor.SharedInfrastructure.Data.GuidedMentorDbContext db,
             CancellationToken ct) =>
         {
             var userId = GetUserId(httpContext);
             if (userId is null) return Results.Unauthorized();
 
-            if (!Enum.TryParse<GuidedMentor.SharedKernel.Role>(request.Role, ignoreCase: true, out var role))
+            // Default to the user's authenticated role claim if request body is missing
+            var roleString = request?.Role
+                ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            if (roleString is null || !Enum.TryParse<GuidedMentor.SharedKernel.Role>(roleString, ignoreCase: true, out var role))
                 return Results.BadRequest(new { Error = "Invalid role. Must be 'Mentor' or 'Mentee'." });
 
-            var command = new MarkCompleteCommand(sessionId, userId.Value, role);
+            // Resolve authenticated user ID to the session participant ID
+            // Sessions store mentors/mentees table PKs; we need to find the one linked to this session
+            var session = await db.Sessions.FindAsync([sessionId], ct);
+            if (session is null)
+                return Results.NotFound(new { Error = "Session not found." });
+
+            Guid participantId;
+            if (role == GuidedMentor.SharedKernel.Role.Mentee)
+            {
+                // Verify the session's mentee belongs to this user
+                var mentee = await db.Mentees.FirstOrDefaultAsync(
+                    m => m.Id == session.MenteeId && m.UserId == userId.Value, ct);
+                if (mentee is null)
+                    return Results.BadRequest(new { Error = "You are not the mentee in this session." });
+                participantId = mentee.Id;
+            }
+            else
+            {
+                // Verify the session's mentor belongs to this user
+                var mentor = await db.Mentors.FirstOrDefaultAsync(
+                    m => m.Id == session.MentorId && m.UserId == userId.Value, ct);
+                if (mentor is null)
+                    return Results.BadRequest(new { Error = "You are not the mentor in this session." });
+                participantId = mentor.Id;
+            }
+
+            var command = new MarkCompleteCommand(sessionId, participantId, role);
             var result = await mediator.Send(command, ct);
 
             return result.IsSuccess

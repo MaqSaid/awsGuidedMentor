@@ -28,6 +28,15 @@ inclusion: always
 - Avoid `System.Reflection.Emit` and dynamic proxies
 - Note: AOT is optional for the free stack (Railway runs standard .NET); keep AOT-ready patterns for future AWS migration
 
+### Numeric Safety
+- Never call `Math.Abs()` on unvalidated `GetHashCode()` results — `int.MinValue` causes `OverflowException`
+- Pattern: `var hash = x.GetHashCode(); var safe = hash == int.MinValue ? 0 : Math.Abs(hash);`
+
+### Background Jobs (Hangfire)
+- Use `IRecurringJobManager` (service-based API) — never `RecurringJob.AddOrUpdate` (static API fails before storage init)
+- Hangfire PostgreSQL requires ADO.NET connection format: `Server=host;Port=5432;Database=db;User Id=user;Password=pass`
+- The EF Core Npgsql format (`Host=host;...`) is NOT compatible with Hangfire.PostgreSql
+
 ### Error Handling
 - Return `Result` or `Result<T>` from handlers — never throw for business logic failures
 - Reserve exceptions for infrastructure failures (network, PostgreSQL, external APIs)
@@ -56,7 +65,16 @@ inclusion: always
 - Always log start/end with ILogger
 - Handle partial failures gracefully
 - Use cron expressions for scheduling
-- Jobs registered in Program.cs startup
+- Jobs registered in Program.cs startup using `IRecurringJobManager` (never static `RecurringJob.AddOrUpdate`)
+- Inject `GuidedMentorDbContext` + `ILogger<T>` + notification publishers as needed
+- Jobs: `CleanupExpiredTokensJob` (5min), `OpportunityExpiryJob` (daily), `LockExpiryJob` (5min), `SessionEscalationJob` (daily), `CompletionReminderJob` (daily)
+
+### Endpoint Registration (LocalDev)
+- Identity endpoints: `app.MapAuthEndpoints()` — handles auth, role, onboarding, settings, upload
+- Mentoring endpoints: `app.MapBrowseEndpoints()`, `app.MapSessionEndpoints()`, `app.MapOpportunityEndpoints()`, etc.
+- Engagement endpoints: inline in Program.cs (notifications, dashboards, meetups, AI assistant)
+- When adding a new endpoint: always update `.kiro/steering/integration-patterns.md`
+- POST endpoints must accept request body (even if empty `{}`) — ASP.NET rejects bodyless POST with 400/415
 
 ### Email (Gmail SMTP)
 - Use `IEmailSender` interface for all email operations

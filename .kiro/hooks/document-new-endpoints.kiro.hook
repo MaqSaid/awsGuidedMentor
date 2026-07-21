@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Document New Endpoints",
+  "description": "When LocalDev Program.cs is edited, checks if any new MapGet/MapPost/MapPut/MapDelete endpoints were added and reminds to update the integration-patterns steering file",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/Shared/GuidedMentor.LocalDev/Program.cs"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check if the edit added any new app.MapGet, app.MapPost, app.MapPut, or app.MapDelete endpoint registrations. If new endpoints were added, remind to update .kiro/steering/integration-patterns.md with the new path, method, and expected body/response shape. Do NOT block the edit - just remind."
+  }
+}

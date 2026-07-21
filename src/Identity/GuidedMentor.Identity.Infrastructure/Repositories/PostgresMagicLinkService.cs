@@ -58,6 +58,11 @@ public sealed class PostgresMagicLinkService : IMagicLinkService
         await _db.SaveChangesAsync(ct);
 
         var magicLink = $"http://localhost:3000/auth/verify?email={Uri.EscapeDataString(email)}&token={token}";
+
+        // Always log the magic link to console so developers can click it directly
+        Console.WriteLine($"[DEV] Magic link: {magicLink}");
+        _logger.LogInformation("[DEV] Magic link for {Email}: {MagicLink}", email, magicLink);
+
         var htmlBody = $"""
             <h2>Your GuidedMentor Login Link</h2>
             <p>Click the link below to sign in:</p>

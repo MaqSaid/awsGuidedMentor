@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Frontend Tests After Task",
+  "description": "Runs Vitest after a spec task completes to verify frontend implementation correctness",
+  "version": "3",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "powershell -NoProfile -Command \"cd frontend/host-shell; npx vitest run --reporter=verbose 2>&1 | Select-Object -Last 30\"",
+    "timeout": 120
+  }
+}

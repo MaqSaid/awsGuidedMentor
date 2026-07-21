@@ -1,44 +1,37 @@
-import { useState, useCallback, useContext } from 'react';
+import { useActionState, useCallback, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../providers/AuthProvider';
 import { apiUrl } from '../lib/api';
 
-type LoginState = 'idle' | 'loading' | 'sent' | 'error';
+type FormActionState =
+  | { status: 'idle' }
+  | { status: 'success'; email?: string }
+  | { status: 'error'; message: string };
+
+async function loginAction(prev: FormActionState, formData: FormData): Promise<FormActionState> {
+  const email = formData.get('email') as string;
+  if (!email.includes('@')) {
+    return { status: 'error', message: 'Please enter a valid email address.' };
+  }
+
+  try {
+    const response = await fetch(apiUrl('/v1/auth/magic-link'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      return { status: 'error', message: 'Something went wrong. Please try again.' };
+    }
+    return { status: 'success', email };
+  } catch {
+    return { status: 'error', message: 'Network error. Please check your connection and try again.' };
+  }
+}
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [state, setState] = useState<LoginState>('idle');
-  const [error, setError] = useState('');
-
-  const handleSendMagicLink = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.includes('@')) {
-      setError('Please enter a valid email address.');
-      setState('error');
-      return;
-    }
-
-    setState('loading');
-    setError('');
-
-    try {
-      const response = await fetch(apiUrl('/v1/auth/magic-link'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (response.ok) {
-        setState('sent');
-      } else {
-        setState('error');
-        setError('Something went wrong. Please try again.');
-      }
-    } catch {
-      setState('error');
-      setError('Network error. Please check your connection and try again.');
-    }
-  }, [email]);
+  const [state, formAction, isPending] = useActionState(loginAction, { status: 'idle' });
 
   const handleGoogleSignIn = useCallback(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -74,7 +67,7 @@ export default function LoginPage() {
             No password needed — we&apos;ll send you a sign-in link
           </p>
 
-          {state === 'sent' ? (
+          {state.status === 'success' ? (
             <div className="text-center" role="status" aria-live="polite">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-mint/20 flex items-center justify-center">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -84,7 +77,7 @@ export default function LoginPage() {
               </div>
               <h2 className="text-lg font-semibold text-text-primary mb-2">Check your inbox!</h2>
               <p className="text-text-secondary text-sm">
-                We sent a sign-in link to <span className="text-text-primary font-medium">{email}</span>
+                We sent a sign-in link to <span className="text-text-primary font-medium">{state.email}</span>
               </p>
               <p className="text-text-secondary text-xs mt-4">
                 The link expires in 10 minutes. Check your spam folder if you don&apos;t see it.
@@ -115,37 +108,36 @@ export default function LoginPage() {
               </div>
 
               {/* Email magic link form */}
-              <form onSubmit={handleSendMagicLink}>
+              <form action={formAction}>
                 <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
                   Email address
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); setState('idle'); }}
                   placeholder="you@example.com"
                   required
                   autoComplete="email"
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-violet/50 focus:border-transparent transition-colors"
-                  aria-describedby={error ? 'email-error' : undefined}
-                  aria-invalid={state === 'error' ? 'true' : undefined}
+                  aria-describedby={state.status === 'error' ? 'email-error' : undefined}
+                  aria-invalid={state.status === 'error' ? 'true' : undefined}
                 />
 
-                {state === 'error' && error && (
+                {state.status === 'error' && (
                   <p id="email-error" className="mt-2 text-sm text-rose" role="alert" aria-live="polite">
-                    {error}
+                    {state.message}
                   </p>
                 )}
 
                 <button
                   type="submit"
-                  disabled={state === 'loading'}
+                  disabled={isPending}
                   className="w-full mt-4 btn-violet py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {state === 'loading' ? (
+                  {isPending ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true" />
                       Sending...
                     </span>
                   ) : (

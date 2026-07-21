@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './providers/AuthProvider';
 import { RoleProvider } from './providers/RoleProvider';
+import { ToastProvider } from './components/Toast';
 import App from './App';
 import './index.css';
 
@@ -51,7 +52,9 @@ enableMocking().then(() => {
         <BrowserRouter>
           <AuthProvider>
             <RoleProvider>
-              <App />
+              <ToastProvider>
+                <App />
+              </ToastProvider>
             </RoleProvider>
           </AuthProvider>
         </BrowserRouter>

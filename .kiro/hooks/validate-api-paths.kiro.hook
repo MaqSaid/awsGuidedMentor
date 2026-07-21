@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Validate API Paths",
+  "description": "When frontend files that make API calls are edited, verifies the endpoint paths match the actual backend routes documented in the integration-patterns steering file",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "frontend/host-shell/src/pages/*.tsx",
+      "frontend/host-shell/src/components/*.tsx",
+      "frontend/host-shell/src/hooks/*.ts",
+      "frontend/host-shell/src/lib/api.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check if the edited file contains any apiFetch or fetch calls to API endpoints. If it does, verify each path matches the correct paths from .kiro/steering/integration-patterns.md. Common mistakes: /v1/help/chat should be /v1/assistant/chat, /v1/users/toggle-role should be /v1/role/toggle, /v1/onboarding/mentee should be /v1/onboarding/step. If a wrong path is found, flag it."
+  }
+}

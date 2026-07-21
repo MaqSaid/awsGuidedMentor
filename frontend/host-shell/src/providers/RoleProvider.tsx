@@ -79,5 +79,5 @@ export function RoleProvider({ children }: RoleProviderProps) {
     [activeRole, isToggling, toggleRole]
   );
 
-  return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
+  return <RoleContext value={value}>{children}</RoleContext>;
 }

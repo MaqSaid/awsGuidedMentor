@@ -75,7 +75,7 @@ export default function MenteeDashboard() {
       </div>
 
       {/* Sessions */}
-      <section aria-label="Active sessions" className="mb-10">
+      <section aria-label="Active sessions" className="mb-10" data-tour="session-plan">
         <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>
           Sessions
         </h2>
@@ -113,7 +113,7 @@ export default function MenteeDashboard() {
       </section>
 
       {/* Mentors preview */}
-      <section aria-label="Browse mentors">
+      <section aria-label="Browse mentors" data-tour="browse">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Mentors

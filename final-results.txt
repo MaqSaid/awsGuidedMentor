@@ -1,0 +1,19 @@
+=== FULL E2E JOURNEY TEST (MSW DISABLED) ===
+
+1. Health: FAIL
+2. Magic Link Request: FAIL
+3. Verify Magic Link: FAIL - No connection could be made because the target machine actively refused it. (localhost:5000)
+4. Mentee Dashboard: FAIL
+5. Mentor Dashboard: FAIL
+6. Browse Mentors: FAIL
+7. Mentor Detail: FAIL
+8. Session Plan: FAIL
+9. Role Toggle: FAIL
+10. Notifications: FAIL
+11. Opportunities: FAIL - No connection could be made because the target machine actively refused it. (localhost:5000)
+12. Meetups: FAIL - No connection could be made because the target machine actively refused it. (localhost:5000)
+13. AI Help: FAIL
+14. Onboarding: FAIL - No connection could be made because the target machine actively refused it. (localhost:5000)
+15. Session Complete: FAIL - No connection could be made because the target machine actively refused it. (localhost:5000)
+
+TOTAL: 0 PASS / 15 FAIL

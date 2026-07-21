@@ -6,18 +6,19 @@ import { apiUrl } from '../lib/api';
 interface Mentor {
   mentorId: string;
   displayName: string;
-  initials: string;
-  professionalTitle: string;
-  companyName: string;
+  title: string;
+  chapter: string;
   expertiseAreas: string[];
   compatibilityScore: number;
+  hasActiveOpportunities: boolean;
   availabilityStatus: string;
 }
 
 interface MentorsResponse {
-  items: Mentor[];
+  mentors: Mentor[];
   totalCount: number;
-  chapter: string;
+  page: number;
+  pageSize: number;
 }
 
 interface MentorCardProps {
@@ -29,18 +30,19 @@ interface MentorCardProps {
 
 const MentorCard = memo(function MentorCard({ mentor, isSelected, hasActiveMentor, onSelect }: MentorCardProps) {
   const isAtCapacity = mentor.availabilityStatus === 'at_capacity';
+  const initials = mentor.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
 
   return (
     <article className="glass-card p-6 flex flex-col items-center text-center transition-all duration-200">
       {/* Avatar */}
       <div className="w-16 h-16 rounded-full bg-bg-secondary border border-border flex items-center justify-center text-lg font-bold text-text-primary mb-3">
-        {mentor.initials}
+        {initials}
       </div>
 
       {/* Name & title */}
       <h3 className="font-semibold text-text-primary">{mentor.displayName}</h3>
       <p className="text-sm text-text-secondary mt-1">
-        {mentor.professionalTitle} &bull; {mentor.companyName}
+        {mentor.title} &bull; {mentor.chapter}
       </p>
 
       {/* Skill chips */}
@@ -91,26 +93,30 @@ const MentorCard = memo(function MentorCard({ mentor, isSelected, hasActiveMento
 
 export default function BrowseMentors() {
   const [data, setData] = useState<MentorsResponse | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>('mentor-0001');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const deferredQuery = useDeferredValue(searchQuery);
   const isStale = searchQuery !== deferredQuery;
   const hasActiveMentor = true; // Demo: user already has a mentor
 
   useEffect(() => {
-    fetch(apiUrl('/v1/mentors'))
+    const token = localStorage.getItem('gm_access_token');
+    const headers: HeadersInit = token
+      ? { 'Authorization': `Bearer ${token}` }
+      : {};
+    fetch(apiUrl('/v1/mentors'), { headers })
       .then((r) => r.json())
       .then((d) => setData(d as MentorsResponse));
   }, []);
 
   const filteredMentors = useMemo(() => {
     if (!data) return [];
-    if (!deferredQuery.trim()) return data.items;
+    if (!deferredQuery.trim()) return data.mentors;
     const q = deferredQuery.toLowerCase();
-    return data.items.filter((m) =>
+    return data.mentors.filter((m) =>
       m.displayName.toLowerCase().includes(q) ||
       m.expertiseAreas.some((s) => s.toLowerCase().includes(q)) ||
-      m.companyName.toLowerCase().includes(q)
+      m.title.toLowerCase().includes(q)
     );
   }, [data, deferredQuery]);
 
@@ -121,10 +127,10 @@ export default function BrowseMentors() {
   return (
     <section className="max-w-6xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
-        GDG Mentors in Your Chapter
+        AWS Community Mentors
       </h1>
       <p className="text-text-secondary mb-6">
-        {data.chapter} &mdash; {data.totalCount} mentors available
+        {data.totalCount} mentors available
       </p>
 
       {/* Locked banner */}

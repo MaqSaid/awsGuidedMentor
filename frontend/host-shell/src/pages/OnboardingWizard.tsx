@@ -1,6 +1,12 @@
-import { useState, useContext } from 'react';
+import { useState, useActionState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../providers/AuthProvider';
+import { apiFetch } from '../lib/api';
+
+type FormActionState =
+  | { status: 'idle' }
+  | { status: 'success'; redirectTo?: string }
+  | { status: 'error'; message: string };
 
 const goalCategories = [
   'Career Transition',
@@ -24,6 +30,43 @@ export default function OnboardingWizard() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [targetRole, setTargetRole] = useState('');
 
+  // Final step submission via useActionState
+  async function onboardingAction(prev: FormActionState, formData: FormData): Promise<FormActionState> {
+    try {
+      const payload = {
+        name: formData.get('name') as string,
+        role,
+        careerGoal: formData.get('careerGoal') as string,
+        categories: formData.getAll('categories') as string[],
+        targetRole: formData.get('targetRole') as string,
+      };
+
+      const response = await apiFetch('/v1/onboarding/complete', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        return { status: 'error', message: 'Something went wrong. Please try again.' };
+      }
+
+      return { status: 'success', redirectTo: '/dashboard' };
+    } catch {
+      return { status: 'error', message: 'Network error. Please check your connection and try again.' };
+    }
+  }
+
+  const [submissionState, formAction, isPending] = useActionState(onboardingAction, { status: 'idle' });
+
+  // Navigate on successful submission
+  useEffect(() => {
+    if (submissionState.status === 'success' && submissionState.redirectTo) {
+      // Signal the OnboardingTour to activate on dashboard
+      sessionStorage.setItem('gm_just_onboarded', 'true');
+      navigate(submissionState.redirectTo);
+    }
+  }, [submissionState, navigate]);
+
   function toggleCategory(cat: string) {
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
@@ -33,8 +76,6 @@ export default function OnboardingWizard() {
   function handleNext() {
     if (step < totalSteps) {
       setStep(step + 1);
-    } else {
-      navigate('/dashboard');
     }
   }
 
@@ -211,12 +252,21 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Review step */}
+        {/* Review step — uses form action for final submission */}
         {((step === 4 && role === 'mentee') || (step === 3 && role === 'mentor')) && (
-          <div>
+          <form action={formAction}>
             <h2 className="text-2xl font-bold mb-6" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Review &amp; Confirm
             </h2>
+
+            {/* Hidden fields carry wizard data for the form action */}
+            <input type="hidden" name="name" value={name} />
+            <input type="hidden" name="careerGoal" value={careerGoal} />
+            {selectedCategories.map((cat) => (
+              <input key={cat} type="hidden" name="categories" value={cat} />
+            ))}
+            <input type="hidden" name="targetRole" value={targetRole} />
+
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-text-secondary">Name</span>
@@ -241,22 +291,47 @@ export default function OnboardingWizard() {
                 </span>
               </div>
             </div>
-          </div>
+
+            {submissionState.status === 'error' && (
+              <p className="mt-4 text-sm text-rose" role="alert" aria-live="polite">
+                {submissionState.message}
+              </p>
+            )}
+
+            {/* Navigation buttons */}
+            <div className="flex justify-between mt-8">
+              <button type="button" onClick={handleBack} className="btn-ghost text-sm">
+                Back
+              </button>
+              <button type="submit" disabled={isPending} className="btn-violet text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                {isPending ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                    Submitting...
+                  </span>
+                ) : (
+                  'Complete'
+                )}
+              </button>
+            </div>
+          </form>
         )}
 
-        {/* Navigation buttons */}
-        <div className="flex justify-between mt-8">
-          {step > 1 ? (
-            <button onClick={handleBack} className="btn-ghost text-sm">
-              Back
+        {/* Navigation buttons for non-final steps */}
+        {!((step === 4 && role === 'mentee') || (step === 3 && role === 'mentor')) && (
+          <div className="flex justify-between mt-8">
+            {step > 1 ? (
+              <button onClick={handleBack} className="btn-ghost text-sm">
+                Back
+              </button>
+            ) : (
+              <div />
+            )}
+            <button onClick={handleNext} className="btn-violet text-sm">
+              Continue
             </button>
-          ) : (
-            <div />
-          )}
-          <button onClick={handleNext} className="btn-violet text-sm">
-            {step === totalSteps ? 'Complete' : 'Continue'}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
